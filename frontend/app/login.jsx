@@ -1,3 +1,5 @@
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -10,7 +12,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Button, Checkbox, Text, TextInput, useTheme } from "react-native-paper";
+import {
+  Button,
+  Checkbox,
+  Text,
+  TextInput,
+  useTheme,
+} from "react-native-paper";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -18,16 +26,25 @@ export default function LoginScreen() {
 
   const [visible, setVisible] = useState(true);
   const [step, setStep] = useState("phone");
-
   const [phone, setPhone] = useState("");
   const [otpDigits, setOtpDigits] = useState(["", "", ""]);
   const otpRefs = useRef([]);
   const [agreed, setAgreed] = useState(false);
-
+  const [selectedRole, setSelectedRole] = useState(null);
   const [timer, setTimer] = useState(0);
   const [resendAvailable, setResendAvailable] = useState(false);
 
-  // Fake timer for resend code
+  const roles = [
+    "Buyer",
+    "Agent",
+    "Consultant",
+    "Seller",
+    "Investor",
+    "Builder",
+    "Dealer",
+    "Owner",
+  ];
+
   useEffect(() => {
     let t;
     if (timer > 0) t = setTimeout(() => setTimer(timer - 1), 1000);
@@ -50,7 +67,6 @@ export default function LoginScreen() {
     router.back();
   };
 
-  // 🚀 Navigate automatically when OTP complete
   useEffect(() => {
     if (otpDigits.join("").length === 3) {
       router.replace("(tabs)");
@@ -63,138 +79,177 @@ export default function LoginScreen() {
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <Modal visible={visible} animationType="slide" transparent>
-        <View style={styles.overlay}>
-          <View style={[styles.sheet, { backgroundColor: theme.colors.background }]}>
-            <TouchableOpacity style={styles.closeBtn} onPress={handleCancel}>
-              <Text style={{ fontSize: 20, color: theme.colors.onSurface }}>✕</Text>
-            </TouchableOpacity>
-
-            <Image
-              source={{
-                uri: "https://img.icons8.com/fluency/96/security-checked.png",
-              }}
-              style={styles.illustration}
+      <Modal visible={visible} animationType="fade" transparent>
+        <BlurView intensity={90} tint="dark" style={styles.overlay}>
+          <View style={styles.sheetWrapper}>
+            <LinearGradient
+              colors={["#009688", "#00bcd4"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.gradientHeader}
             />
+            <View style={[styles.sheet, { backgroundColor: theme.colors.elevation.level1 }]}>
+              <TouchableOpacity style={styles.closeBtn} onPress={handleCancel}>
+                <Text style={{ fontSize: 22, color: theme.colors.onSurface }}>✕</Text>
+              </TouchableOpacity>
 
-            {step === "phone" ? (
-              <>
-                <Text variant="headlineMedium" style={styles.title}>
-                  Verify Your Number
-                </Text>
-                <Text variant="bodyMedium" style={styles.subtitle}>
-                  We'll send you a verification code
-                </Text>
+              <Image
+                source={{
+                  uri: "https://img.icons8.com/color/96/secured-letter--v1.png",
+                }}
+                style={styles.illustration}
+              />
 
-                <TextInput
-                  label="Mobile Number"
-                  mode="outlined"
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                  value={phone}
-                  onChangeText={setPhone}
-                  style={styles.input}
-                  left={<TextInput.Icon icon="phone" />}
-                />
-
-                <View style={styles.termsContainer}>
-                  <Checkbox.Android
-                    status={agreed ? "checked" : "unchecked"}
-                    onPress={() => setAgreed(!agreed)}
-                    color={theme.colors.primary}
-                  />
-                  <Text variant="bodySmall" style={styles.termsText}>
-                    I agree to the Terms of Service and Privacy Policy
+              {step === "phone" ? (
+                <>
+                  <Text variant="headlineMedium" style={styles.title}>
+                    Verify Your Mobile Number
                   </Text>
-                </View>
+                  <Text variant="bodyMedium" style={styles.subtitle}>
+                    Get started by verifying your number below
+                  </Text>
 
-                <View style={styles.buttonContainer}>
-                  <Button
+                  <TextInput
+                    label="Mobile Number"
                     mode="outlined"
-                    onPress={handleCancel}
-                    style={[styles.btn, styles.cancelBtn]}
-                    icon="close-circle"
-                  >
-                    Cancel
-                  </Button>
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                    value={phone}
+                    onChangeText={setPhone}
+                    style={styles.input}
+                    left={<TextInput.Icon icon="phone" />}
+                  />
 
-                  <Button
-                    mode="contained-tonal"
-                    onPress={handleSendOtp}
-                    style={[styles.btn, styles.agreeBtn]}
-                    disabled={!isValidPhone() || !agreed}
-                    icon="check-decagram"
-                  >
-                    Agree & Continue
-                  </Button>
-                </View>
-              </>
-            ) : (
-              <>
-                <Text variant="headlineMedium" style={styles.title}>
-                  Enter Verification Code
-                </Text>
-                <Text variant="bodyMedium" style={styles.subtitle}>
-                  Code sent to +91-{phone}{" "}
-                  <Text
-                    style={{ color: theme.colors.primary, fontWeight: "500" }}
-                    onPress={() => setStep("phone")}
-                  >
-                    Change
+                  <View style={styles.chipContainer}>
+                    {roles.map((role, idx) => {
+                      const isSelected = selectedRole === role;
+                      return (
+                        <TouchableOpacity
+                          key={idx}
+                          activeOpacity={0.9}
+                          onPress={() =>
+                            setSelectedRole(isSelected ? null : role)
+                          }
+                          style={[
+                            styles.chip,
+                            isSelected && styles.chipSelected,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.chipText,
+                              isSelected && styles.chipTextSelected,
+                            ]}
+                          >
+                            {role}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  <View style={styles.termsContainer}>
+                    <Checkbox.Android
+                      status={agreed ? "checked" : "unchecked"}
+                      onPress={() => setAgreed(!agreed)}
+                      color="#009688"
+                    />
+                    <Text variant="bodySmall" style={styles.termsText}>
+                      I agree to the{" "}
+                      <Text style={{ color: "#009688", fontWeight: "bold" }}>
+                        Terms of Service
+                      </Text>{" "}
+                      and{" "}
+                      <Text style={{ color: "#009688", fontWeight: "bold" }}>
+                        Privacy Policy
+                      </Text>
+                    </Text>
+                  </View>
+
+                  <View style={styles.buttonContainer}>
+                    <Button
+                      mode="outlined"
+                      onPress={handleCancel}
+                      style={[styles.btn, styles.cancelBtn]}
+                      labelStyle={{ fontWeight: "600" }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      mode="contained"
+                      onPress={handleSendOtp}
+                      style={[styles.btn, styles.agreeBtn]}
+                      labelStyle={{ fontWeight: "600" }}
+                      disabled={!isValidPhone() || !agreed || !selectedRole}
+                    >
+                      Continue
+                    </Button>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Text variant="headlineMedium" style={styles.title}>
+                    Enter Verification Code
                   </Text>
-                </Text>
+                  <Text variant="bodyMedium" style={styles.subtitle}>
+                    Code sent to +91-{phone}{" "}
+                    <Text
+                      style={{ color: "#009688", fontWeight: "bold" }}
+                      onPress={() => setStep("phone")}
+                    >
+                      Change
+                    </Text>
+                  </Text>
 
-                <View style={styles.otpContainer}>
-                  {otpDigits.map((digit, i) => (
-                    <RNTextInput
-                      key={i}
-                      ref={(el) => (otpRefs.current[i] = el)}
-                      value={digit}
+                  <View style={styles.otpContainer}>
+                    {otpDigits.map((digit, i) => (
+                      <RNTextInput
+                        key={i}
+                        ref={(el) => (otpRefs.current[i] = el)}
+                        value={digit}
+                        style={[
+                          styles.otpBox,
+                          {
+                            borderColor: digit
+                              ? "#009688"
+                              : "rgba(0,0,0,0.1)",
+                            shadowColor: digit ? "#009688" : "#000",
+                          },
+                        ]}
+                        maxLength={1}
+                        keyboardType="number-pad"
+                        onChangeText={(val) => {
+                          const newOtp = [...otpDigits];
+                          newOtp[i] = val;
+                          setOtpDigits(newOtp);
+                          if (val && i < 2) otpRefs.current[i + 1].focus();
+                          if (!val && i > 0) otpRefs.current[i - 1].focus();
+                        }}
+                        autoFocus={i === 0}
+                      />
+                    ))}
+                  </View>
+
+                  <TouchableOpacity
+                    disabled={!resendAvailable}
+                    onPress={handleSendOtp}
+                  >
+                    <Text
                       style={[
-                        styles.otpBox,
+                        styles.resend,
                         {
-                          borderColor: digit
-                            ? theme.colors.primary
-                            : theme.colors.outline,
+                          color: resendAvailable ? "#009688" : "#999",
                         },
                       ]}
-                      maxLength={1}
-                      keyboardType="number-pad"
-                      onChangeText={(val) => {
-                        const newOtp = [...otpDigits];
-                        newOtp[i] = val;
-                        setOtpDigits(newOtp);
-
-                        if (val && i < 2) otpRefs.current[i + 1].focus();
-                        if (!val && i > 0) otpRefs.current[i - 1].focus();
-                      }}
-                      autoFocus={i === 0}
-                    />
-                  ))}
-                </View>
-
-                <TouchableOpacity
-                  disabled={!resendAvailable}
-                  onPress={handleSendOtp}
-                >
-                  <Text
-                    style={[
-                      styles.resend,
-                      {
-                        color: resendAvailable
-                          ? theme.colors.primary
-                          : theme.colors.outline,
-                        opacity: resendAvailable ? 1 : 0.6,
-                      },
-                    ]}
-                  >
-                    {resendAvailable ? "Resend Code" : `Resend code in ${timer}s`}
-                  </Text>
-                </TouchableOpacity>
-              </>
-            )}
+                    >
+                      {resendAvailable ? "Resend Code" : `Resend in ${timer}s`}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
           </View>
-        </View>
+        </BlurView>
       </Modal>
     </KeyboardAvoidingView>
   );
@@ -204,92 +259,110 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.65)",
+  },
+  sheetWrapper: {
+    width: "100%",
+  },
+  gradientHeader: {
+    height: 6,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
   },
   sheet: {
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    padding: 28,
-    minHeight: 480,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 26,
     alignItems: "center",
-    elevation: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: -4 },
+    shadowRadius: 12,
   },
   closeBtn: {
     alignSelf: "flex-end",
-    padding: 8,
-    marginBottom: 4,
-    borderRadius: 20,
+    padding: 6,
     backgroundColor: "rgba(0,0,0,0.05)",
+    borderRadius: 16,
   },
   illustration: {
-    width: 110,
-    height: 110,
-    marginVertical: 12,
-    marginBottom: 20,
+    width: 100,
+    height: 100,
+    marginVertical: 10,
   },
   title: {
-    marginBottom: 10,
+    marginTop: 8,
+    marginBottom: 6,
     textAlign: "center",
     fontWeight: "800",
-    fontSize: 26,
-    letterSpacing: 0.3,
+    fontSize: 24,
+    color: "#111",
   },
   subtitle: {
     textAlign: "center",
-    marginBottom: 28,
-    lineHeight: 22,
-    paddingHorizontal: 12,
+    marginBottom: 24,
     color: "#666",
     fontSize: 15,
   },
   input: {
     width: "100%",
-    marginBottom: 20,
+    marginBottom: 18,
     backgroundColor: "#fff",
-    borderRadius: 16,
+    borderRadius: 14,
+  },
+  chipContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 10,
+    marginBottom: 24,
+  },
+  chip: {
+    backgroundColor: "#fff",
+    borderWidth: 1.5,
+    borderColor: "#009688",
+    borderRadius: 24,
+    paddingVertical: 7,
+    paddingHorizontal: 16,
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  chipSelected: {
+    backgroundColor: "#009688",
+    borderColor: "#009688",
+    shadowColor: "#009688",
+  },
+  chipText: {
+    color: "#009688",
+    fontWeight: "600",
+  },
+  chipTextSelected: {
+    color: "#fff",
   },
   termsContainer: {
     flexDirection: "row",
     alignItems: "flex-start",
     width: "100%",
-    marginBottom: 28,
-    paddingHorizontal: 8,
-    backgroundColor: "rgba(0,150,136,0.05)",
-    paddingVertical: 14,
-    borderRadius: 14,
+    marginBottom: 24,
+    paddingHorizontal: 10,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "rgba(0,150,136,0.07)",
     borderLeftWidth: 3,
     borderLeftColor: "#009688",
   },
   termsText: {
     flex: 1,
     marginLeft: 10,
-    lineHeight: 20,
     color: "#333",
     fontSize: 13.5,
-    fontWeight: "500",
-  },
-  otpContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginBottom: 36,
-  },
-  otpBox: {
-    width: 60,
-    height: 60,
-    borderWidth: 2,
-    borderRadius: 14,
-    marginHorizontal: 6,
-    textAlign: "center",
-    fontSize: 22,
-    fontWeight: "700",
-    backgroundColor: "#fff",
   },
   buttonContainer: {
     flexDirection: "row",
     width: "100%",
     justifyContent: "space-between",
-    gap: 14,
-    marginTop: 6,
+    gap: 12,
   },
   btn: {
     flex: 1,
@@ -302,10 +375,27 @@ const styles = StyleSheet.create({
   agreeBtn: {
     backgroundColor: "#009688",
   },
+  otpContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 30,
+  },
+  otpBox: {
+    width: 58,
+    height: 58,
+    borderWidth: 2,
+    borderRadius: 14,
+    marginHorizontal: 6,
+    textAlign: "center",
+    fontSize: 22,
+    fontWeight: "700",
+    backgroundColor: "#fff",
+    shadowOpacity: 0.2,
+    elevation: 3,
+  },
   resend: {
     fontSize: 15,
     textAlign: "center",
     fontWeight: "600",
-    letterSpacing: 0.2,
   },
 });
