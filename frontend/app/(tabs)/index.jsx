@@ -19,8 +19,6 @@ import {
   Card,
   Divider,
   IconButton,
-  Modal,
-  Portal,
   Searchbar,
   Text
 } from "react-native-paper";
@@ -137,7 +135,6 @@ export default function HomeScreen() {
             clearIcon={currentLocation ? "close" : "magnify"}
             clearIconColor={currentLocation ? "#FF5252" : "#999"}
             onClearIconPress={clearSearchAndLocation}
-            placeholder="Search location..."
           />
           {locationLoading && <ActivityIndicator size="small" color="#009688" style={styles.loadingIndicator} />}
         </View>
@@ -216,34 +213,6 @@ export default function HomeScreen() {
         </View>
         <View style={{ height:100 }} />
       </ScrollView>
-
-      <Portal>
-        <Modal visible={menuVisible} onDismiss={closeMenu} contentContainerStyle={styles.modalBox}>
-          <Text variant="headlineSmall" style={styles.modalTitle}>Menu</Text>
-          <View style={{ marginTop:20, gap:10 }}>
-            <Button mode="contained" style={styles.modalActionButton} icon="home">Home</Button>
-            <Button mode="outlined" style={styles.modalActionButton} icon="account">Profile</Button>
-            <Button mode="outlined" style={styles.modalActionButton} icon="heart">Favorites</Button>
-            <Button mode="outlined" style={styles.modalActionButton} icon="cog">Settings</Button>
-            <Button mode="text" onPress={closeMenu}>Close</Button>
-          </View>
-        </Modal>
-
-        <Modal visible={visible} onDismiss={closeModal} contentContainerStyle={styles.modalBox}>
-          {selectedAgent && (
-            <>
-              <Avatar.Image size={90} source={{ uri:selectedAgent.img }} style={{ alignSelf:"center", marginBottom:12 }} />
-              <Text variant="headlineSmall" style={styles.modalTitle}>{selectedAgent.name}</Text>
-              <Text variant="bodyMedium" style={styles.modalSubtitle}>{selectedAgent.role}</Text>
-              <View style={{ marginTop:20, gap:10 }}>
-                <Button mode="contained" style={styles.modalActionButton} icon="phone">Call Now</Button>
-                <Button mode="outlined" style={styles.modalActionButton} icon="whatsapp">WhatsApp</Button>
-                <Button mode="text" onPress={closeModal}>Cancel</Button>
-              </View>
-            </>
-          )}
-        </Modal>
-      </Portal>
     </>
   );
 }

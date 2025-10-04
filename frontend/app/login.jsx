@@ -1,4 +1,415 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+// import AsyncStorage from "@react-native-async-storage/async-storage";
+// import { useRouter } from "expo-router";
+// import { useEffect, useRef, useState } from "react";
+// import {
+//   Image,
+//   KeyboardAvoidingView,
+//   Modal,
+//   Platform,
+//   TextInput as RNTextInput,
+//   StyleSheet,
+//   TouchableOpacity,
+//   View,
+// } from "react-native";
+// import { Button, Checkbox, Text, TextInput, useTheme } from "react-native-paper";
+// import { sendOtp, verifyOtp } from "./services/login";
+
+// export default function LoginScreen() {
+//   const router = useRouter();
+//   const theme = useTheme();
+
+//   const [visible, setVisible] = useState(true);
+//   const [step, setStep] = useState("phone");
+
+//   const [phone, setPhone] = useState("");
+//   const [otpDigits, setOtpDigits] = useState(["", "", ""]);
+//   const otpRefs = useRef([]);
+//   const [agreed, setAgreed] = useState(false);
+
+//   const [timer, setTimer] = useState(0);
+//   const [resendAvailable, setResendAvailable] = useState(false);
+//   const [loading, setLoading] = useState(false);
+
+//   useEffect(() => {
+//     let t;
+//     if (timer > 0) t = setTimeout(() => setTimer(timer - 1), 1000);
+//     else setResendAvailable(true);
+//     return () => clearTimeout(t);
+//   }, [timer]);
+
+//   useEffect(() => {
+//     if (step === "otp" && otpDigits.join("").length === 3) {
+//       handleConfirmOtp();
+//     }
+//   }, [otpDigits]);
+
+//   const isValidPhone = () => phone.replace(/\D/g, "").length === 10;
+
+//   const handleSendOtp = async () => {
+//     if (!isValidPhone()) return;
+//     setLoading(true);
+//     try {
+//       const body = { phone: `+91${phone}` };
+//       console.log("Sending OTP to:", body.phone);
+//       const response = await sendOtp(body);
+
+//       if (response.ok) {
+//         setStep("otp");
+//         setResendAvailable(false);
+//         setTimer(30);
+//         setOtpDigits(["", "", ""]);
+//         alert(response.message || "OTP sent!");
+//       } else {
+//         alert("Failed to send OTP. Try again.");
+//       }
+//     } catch (err) {
+//       console.log("Send OTP error:", err.message);
+//       alert("Error sending OTP. Please check your network.");
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const handleConfirmOtp = async () => {
+//     const otp = otpDigits.join("");
+//     if (otp.length < 3) return;
+
+//     setLoading(true);
+//     try {
+//       const body = { phone: `+91${phone}`, otp };
+//       const response = await verifyOtp(body);
+
+//       if (response.ok && response.verified) {
+//         await AsyncStorage.setItem("userToken", response.token);
+//         setVisible(false);
+//         router.replace("(tabs)");
+//       } else {
+//         alert("Invalid OTP. Please try again.");
+//         setOtpDigits(["", "", ""]);
+//         if (otpRefs.current[0]) otpRefs.current[0].focus();
+//       }
+//     } catch (err) {
+//       console.log("Verify OTP error:", err.message);
+//       alert("Error verifying OTP. Please try again.");
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const handleCancel = () => {
+//     setVisible(false);
+//     router.back();
+//   };
+
+//   const handleAgree = () => {
+//     if (step === "phone") {
+//       handleSendOtp();
+//     }
+//   };
+
+//   return (
+//     <KeyboardAvoidingView
+//       style={{ flex: 1 }}
+//       behavior={Platform.OS === "ios" ? "padding" : "height"}
+//     >
+//       <Modal visible={visible} animationType="slide" transparent>
+//         <View style={styles.overlay}>
+//           <View style={[styles.sheet, { backgroundColor: theme.colors.background }]}>
+//             <TouchableOpacity style={styles.closeBtn} onPress={handleCancel}>
+//               <Text style={{ fontSize: 20, color: theme.colors.onSurface }}>✕</Text>
+//             </TouchableOpacity>
+
+//             <Image
+//               source={{
+//                 uri: "https://img.icons8.com/fluency/96/security-checked.png",
+//               }}
+//               style={styles.illustration}
+//             />
+
+//             {step === "phone" ? (
+//               <>
+//                 <Text variant="headlineMedium" style={styles.title}>
+//                   Verify Your Number
+//                 </Text>
+//                 <Text variant="bodyMedium" style={styles.subtitle}>
+//                   We'll send you a verification code
+//                 </Text>
+
+//                 <TextInput
+//                   label="Mobile Number"
+//                   mode="outlined"
+//                   keyboardType="phone-pad"
+//                   maxLength={10}
+//                   value={phone}
+//                   onChangeText={setPhone}
+//                   style={styles.input}
+//                   left={<TextInput.Icon icon="phone" />}
+//                   outlineColor={theme.colors.outline}
+//                   activeOutlineColor={theme.colors.primary}
+//                 />
+
+//                 <View style={styles.termsContainer}>
+//                   <Checkbox.Android
+//                     status={agreed ? "checked" : "unchecked"}
+//                     onPress={() => setAgreed(!agreed)}
+//                     color={theme.colors.primary}
+//                   />
+//                   <Text variant="bodySmall" style={styles.termsText}>
+//                     I agree to the Terms of Service and Privacy Policy
+//                   </Text>
+//                 </View>
+
+//                 <View style={styles.buttonContainer}>
+//                   <Button
+//                     mode="outlined"
+//                     onPress={handleCancel}
+//                     style={[styles.btn, styles.cancelBtn]}
+//                     contentStyle={styles.btnContent}
+//                     textColor={theme.colors.error}
+//                     icon="close-circle"
+//                   >
+//                     Cancel
+//                   </Button>
+
+//                   <Button
+//                     mode="contained"
+//                     onPress={handleAgree}
+//                     style={[styles.btn, styles.agreeBtn]}
+//                     contentStyle={styles.btnContent}
+//                     disabled={!isValidPhone() || !agreed || loading}
+//                     icon="check-decagram"
+//                     loading={loading}
+//                   >
+//                     Agree & Continue
+//                   </Button>
+//                 </View>
+//               </>
+//             ) : (
+//               <>
+//                 <Text variant="headlineMedium" style={styles.title}>
+//                   Enter Verification Code
+//                 </Text>
+//                 <Text variant="bodyMedium" style={styles.subtitle}>
+//                   Code sent to +91-{phone}{" "}
+//                   <Text
+//                     style={{ color: theme.colors.primary, fontWeight: "500" }}
+//                     onPress={() => setStep("phone")}
+//                   >
+//                     Change
+//                   </Text>
+//                 </Text>
+
+//                 <View style={styles.otpContainer}>
+//                   {otpDigits.map((digit, i) => (
+//                     <RNTextInput
+//                       key={i}
+//                       ref={(el) => (otpRefs.current[i] = el)}
+//                       value={digit}
+//                       style={[
+//                         styles.otpBox,
+//                         {
+//                           borderColor: digit ? theme.colors.primary : theme.colors.outline,
+//                           backgroundColor: theme.colors.surface,
+//                           color: theme.colors.onSurface,
+//                         },
+//                       ]}
+//                       maxLength={1}
+//                       keyboardType="number-pad"
+//                       onChangeText={(val) => {
+//                         const newOtp = [...otpDigits];
+//                         newOtp[i] = val;
+//                         setOtpDigits(newOtp);
+
+//                         if (val && i < 2) otpRefs.current[i + 1].focus();
+//                         if (!val && i > 0) otpRefs.current[i - 1].focus();
+//                       }}
+//                       onKeyPress={({ nativeEvent }) => {
+//                         if (nativeEvent.key === "Backspace" && !digit && i > 0) {
+//                           otpRefs.current[i - 1].focus();
+//                         }
+//                       }}
+//                       autoFocus={i === 0}
+//                     />
+//                   ))}
+//                 </View>
+
+//                 <Button
+//                   mode="contained"
+//                   onPress={handleConfirmOtp}
+//                   style={[styles.btn, styles.verifyBtn]}
+//                   contentStyle={styles.btnContent}
+//                   disabled={otpDigits.join("").length < 3 || loading}
+//                   icon="shield-check"
+//                   loading={loading}
+//                 >
+//                   Verify OTP
+//                 </Button>
+
+//                 <TouchableOpacity
+//                   disabled={!resendAvailable}
+//                   onPress={handleSendOtp}
+//                 >
+//                   <Text
+//                     style={[
+//                       styles.resend,
+//                       {
+//                         color: resendAvailable ? theme.colors.primary : theme.colors.outline,
+//                         opacity: resendAvailable ? 1 : 0.6,
+//                       },
+//                     ]}
+//                   >
+//                     {resendAvailable ? "Resend Code" : `Resend code in ${timer}s`}
+//                   </Text>
+//                 </TouchableOpacity>
+//               </>
+//             )}
+//           </View>
+//         </View>
+//       </Modal>
+//     </KeyboardAvoidingView>
+//   );
+// }
+
+// // Keep your styles the same...
+
+// const styles = StyleSheet.create({
+//   overlay: {
+//     flex: 1,
+//     justifyContent: "flex-end",
+//     backgroundColor: "rgba(0,0,0,0.65)",
+//   },
+//   sheet: {
+//     borderTopLeftRadius: 32,
+//     borderTopRightRadius: 32,
+//     padding: 28,
+//     minHeight: 480,
+//     alignItems: "center",
+//     shadowColor: "#000",
+//     shadowOffset: { width: 0, height: -4 },
+//     shadowOpacity: 0.3,
+//     shadowRadius: 8,
+//     elevation: 10,
+//   },
+//   closeBtn: { 
+//     alignSelf: "flex-end", 
+//     padding: 8, 
+//     marginBottom: 4,
+//     borderRadius: 20,
+//     backgroundColor: "rgba(0,0,0,0.05)",
+//   },
+//   illustration: { 
+//     width: 110, 
+//     height: 110, 
+//     marginVertical: 12,
+//     marginBottom: 20,
+//   },
+//   title: { 
+//     marginBottom: 10, 
+//     textAlign: "center", 
+//     fontWeight: "800",
+//     fontSize: 26,
+//     letterSpacing: 0.3,
+//   },
+//   subtitle: {
+//     textAlign: "center",
+//     marginBottom: 28,
+//     lineHeight: 22,
+//     paddingHorizontal: 12,
+//     color: "#666",
+//     fontSize: 15,
+//   },
+//   input: {
+//     width: "100%",
+//     marginBottom: 20,
+//     backgroundColor: "#fff",
+//     borderRadius: 16,
+//   },
+//   termsContainer: {
+//     flexDirection: "row",
+//     alignItems: "flex-start",
+//     width: "100%",
+//     marginBottom: 28,
+//     paddingHorizontal: 8,
+//     backgroundColor: "rgba(0,150,136,0.05)",
+//     paddingVertical: 14,
+//     borderRadius: 14,
+//     borderLeftWidth: 3,
+//     borderLeftColor: "#009688",
+//   },
+//   termsText: { 
+//     flex: 1, 
+//     marginLeft: 10, 
+//     lineHeight: 20, 
+//     color: "#333",
+//     fontSize: 13.5,
+//     fontWeight: "500",
+//   },
+//   otpContainer: {
+//     flexDirection: "row",
+//     justifyContent: "center",
+//     marginBottom: 36,
+//     paddingHorizontal: 8,
+//   },
+//   otpBox: {
+//     width: 64,
+//     height: 64,
+//     borderWidth: 2.5,
+//     borderRadius: 16,
+//     marginHorizontal: 6,
+//     textAlign: "center",
+//     fontSize: 24,
+//     fontWeight: "700",
+//     backgroundColor: "#fff",
+//     shadowColor: "#009688",
+//     shadowOffset: { width: 0, height: 2 },
+//     shadowOpacity: 0.15,
+//     shadowRadius: 4,
+//     elevation: 3,
+//   },
+//   buttonContainer: {
+//     flexDirection: "row",
+//     width: "100%",
+//     justifyContent: "space-between",
+//     gap: 14,
+//     marginTop: 6,
+//   },
+//   btn: {
+//     flex: 1,
+//     borderRadius: 16,
+//   },
+//   btnContent: {
+//     paddingVertical: 14,
+//   },
+//   cancelBtn: {
+//     borderWidth: 2,
+//     borderColor: "#E53935",
+//     backgroundColor: "rgba(229,57,53,0.08)",
+//   },
+//   agreeBtn: {
+//     backgroundColor: "linear-gradient(135deg, #00897B 0%, #00695C 100%)",
+//     shadowColor: "#009688",
+//     shadowOffset: { width: 0, height: 4 },
+//     shadowOpacity: 0.35,
+//     shadowRadius: 6,
+//     elevation: 8,
+//   },
+//   verifyBtn: {
+//     borderRadius: 16,
+//     marginBottom: 20,
+//     backgroundColor: "#009688",
+//     shadowColor: "#009688",
+//     shadowOffset: { width: 0, height: 4 },
+//     shadowOpacity: 0.35,
+//     shadowRadius: 6,
+//     elevation: 8,
+//   },
+//   resend: {
+//     fontSize: 15,
+//     textAlign: "center",
+//     fontWeight: "600",
+//     letterSpacing: 0.2,
+//   },
+// });
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -12,7 +423,6 @@ import {
   View,
 } from "react-native";
 import { Button, Checkbox, Text, TextInput, useTheme } from "react-native-paper";
-import { sendOtp, verifyOtp } from "./services/login";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -28,8 +438,8 @@ export default function LoginScreen() {
 
   const [timer, setTimer] = useState(0);
   const [resendAvailable, setResendAvailable] = useState(false);
-  const [loading, setLoading] = useState(false);
 
+  // Fake timer for resend code
   useEffect(() => {
     let t;
     if (timer > 0) t = setTimeout(() => setTimer(timer - 1), 1000);
@@ -37,63 +447,14 @@ export default function LoginScreen() {
     return () => clearTimeout(t);
   }, [timer]);
 
-  useEffect(() => {
-    if (step === "otp" && otpDigits.join("").length === 3) {
-      handleConfirmOtp();
-    }
-  }, [otpDigits]);
-
   const isValidPhone = () => phone.replace(/\D/g, "").length === 10;
 
-  const handleSendOtp = async () => {
+  const handleSendOtp = () => {
     if (!isValidPhone()) return;
-    setLoading(true);
-    try {
-      const body = { phone: `+91${phone}` };
-      console.log("Sending OTP to:", body.phone);
-      const response = await sendOtp(body);
-
-      if (response.ok) {
-        setStep("otp");
-        setResendAvailable(false);
-        setTimer(30);
-        setOtpDigits(["", "", ""]);
-        alert(response.message || "OTP sent!");
-      } else {
-        alert("Failed to send OTP. Try again.");
-      }
-    } catch (err) {
-      console.log("Send OTP error:", err.message);
-      alert("Error sending OTP. Please check your network.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleConfirmOtp = async () => {
-    const otp = otpDigits.join("");
-    if (otp.length < 3) return;
-
-    setLoading(true);
-    try {
-      const body = { phone: `+91${phone}`, otp };
-      const response = await verifyOtp(body);
-
-      if (response.ok && response.verified) {
-        await AsyncStorage.setItem("userToken", response.token);
-        setVisible(false);
-        router.replace("(tabs)");
-      } else {
-        alert("Invalid OTP. Please try again.");
-        setOtpDigits(["", "", ""]);
-        if (otpRefs.current[0]) otpRefs.current[0].focus();
-      }
-    } catch (err) {
-      console.log("Verify OTP error:", err.message);
-      alert("Error verifying OTP. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    setStep("otp");
+    setResendAvailable(false);
+    setTimer(30);
+    setOtpDigits(["", "", ""]);
   };
 
   const handleCancel = () => {
@@ -101,11 +462,13 @@ export default function LoginScreen() {
     router.back();
   };
 
-  const handleAgree = () => {
-    if (step === "phone") {
-      handleSendOtp();
+  // 🚀 Navigate automatically when OTP complete
+  useEffect(() => {
+    if (otpDigits.join("").length === 3) {
+      router.replace("(tabs)");
+      setVisible(false);
     }
-  };
+  }, [otpDigits]);
 
   return (
     <KeyboardAvoidingView
@@ -144,8 +507,6 @@ export default function LoginScreen() {
                   onChangeText={setPhone}
                   style={styles.input}
                   left={<TextInput.Icon icon="phone" />}
-                  outlineColor={theme.colors.outline}
-                  activeOutlineColor={theme.colors.primary}
                 />
 
                 <View style={styles.termsContainer}>
@@ -164,21 +525,17 @@ export default function LoginScreen() {
                     mode="outlined"
                     onPress={handleCancel}
                     style={[styles.btn, styles.cancelBtn]}
-                    contentStyle={styles.btnContent}
-                    textColor={theme.colors.error}
                     icon="close-circle"
                   >
                     Cancel
                   </Button>
 
                   <Button
-                    mode="contained"
-                    onPress={handleAgree}
+                    mode="contained-tonal"
+                    onPress={handleSendOtp}
                     style={[styles.btn, styles.agreeBtn]}
-                    contentStyle={styles.btnContent}
-                    disabled={!isValidPhone() || !agreed || loading}
+                    disabled={!isValidPhone() || !agreed}
                     icon="check-decagram"
-                    loading={loading}
                   >
                     Agree & Continue
                   </Button>
@@ -208,9 +565,9 @@ export default function LoginScreen() {
                       style={[
                         styles.otpBox,
                         {
-                          borderColor: digit ? theme.colors.primary : theme.colors.outline,
-                          backgroundColor: theme.colors.surface,
-                          color: theme.colors.onSurface,
+                          borderColor: digit
+                            ? theme.colors.primary
+                            : theme.colors.outline,
                         },
                       ]}
                       maxLength={1}
@@ -223,27 +580,10 @@ export default function LoginScreen() {
                         if (val && i < 2) otpRefs.current[i + 1].focus();
                         if (!val && i > 0) otpRefs.current[i - 1].focus();
                       }}
-                      onKeyPress={({ nativeEvent }) => {
-                        if (nativeEvent.key === "Backspace" && !digit && i > 0) {
-                          otpRefs.current[i - 1].focus();
-                        }
-                      }}
                       autoFocus={i === 0}
                     />
                   ))}
                 </View>
-
-                <Button
-                  mode="contained"
-                  onPress={handleConfirmOtp}
-                  style={[styles.btn, styles.verifyBtn]}
-                  contentStyle={styles.btnContent}
-                  disabled={otpDigits.join("").length < 3 || loading}
-                  icon="shield-check"
-                  loading={loading}
-                >
-                  Verify OTP
-                </Button>
 
                 <TouchableOpacity
                   disabled={!resendAvailable}
@@ -253,7 +593,9 @@ export default function LoginScreen() {
                     style={[
                       styles.resend,
                       {
-                        color: resendAvailable ? theme.colors.primary : theme.colors.outline,
+                        color: resendAvailable
+                          ? theme.colors.primary
+                          : theme.colors.outline,
                         opacity: resendAvailable ? 1 : 0.6,
                       },
                     ]}
@@ -270,8 +612,6 @@ export default function LoginScreen() {
   );
 }
 
-// Keep your styles the same...
-
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
@@ -284,28 +624,24 @@ const styles = StyleSheet.create({
     padding: 28,
     minHeight: 480,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
     elevation: 10,
   },
-  closeBtn: { 
-    alignSelf: "flex-end", 
-    padding: 8, 
+  closeBtn: {
+    alignSelf: "flex-end",
+    padding: 8,
     marginBottom: 4,
     borderRadius: 20,
     backgroundColor: "rgba(0,0,0,0.05)",
   },
-  illustration: { 
-    width: 110, 
-    height: 110, 
+  illustration: {
+    width: 110,
+    height: 110,
     marginVertical: 12,
     marginBottom: 20,
   },
-  title: { 
-    marginBottom: 10, 
-    textAlign: "center", 
+  title: {
+    marginBottom: 10,
+    textAlign: "center",
     fontWeight: "800",
     fontSize: 26,
     letterSpacing: 0.3,
@@ -336,10 +672,10 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: "#009688",
   },
-  termsText: { 
-    flex: 1, 
-    marginLeft: 10, 
-    lineHeight: 20, 
+  termsText: {
+    flex: 1,
+    marginLeft: 10,
+    lineHeight: 20,
     color: "#333",
     fontSize: 13.5,
     fontWeight: "500",
@@ -348,23 +684,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     marginBottom: 36,
-    paddingHorizontal: 8,
   },
   otpBox: {
-    width: 64,
-    height: 64,
-    borderWidth: 2.5,
-    borderRadius: 16,
+    width: 60,
+    height: 60,
+    borderWidth: 2,
+    borderRadius: 14,
     marginHorizontal: 6,
     textAlign: "center",
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "700",
     backgroundColor: "#fff",
-    shadowColor: "#009688",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
   },
   buttonContainer: {
     flexDirection: "row",
@@ -377,31 +707,12 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 16,
   },
-  btnContent: {
-    paddingVertical: 14,
-  },
   cancelBtn: {
     borderWidth: 2,
     borderColor: "#E53935",
-    backgroundColor: "rgba(229,57,53,0.08)",
   },
   agreeBtn: {
-    backgroundColor: "linear-gradient(135deg, #00897B 0%, #00695C 100%)",
-    shadowColor: "#009688",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  verifyBtn: {
-    borderRadius: 16,
-    marginBottom: 20,
     backgroundColor: "#009688",
-    shadowColor: "#009688",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 8,
   },
   resend: {
     fontSize: 15,
