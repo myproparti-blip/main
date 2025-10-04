@@ -1,28 +1,20 @@
-import React, { useState } from "react";
-import { View, StyleSheet, Image } from "react-native";
+import React from "react";
+import { View, StyleSheet, Image, TouchableOpacity } from "react-native";
 import {
   Appbar,
   Card,
-  Avatar,
   Text,
   Button,
   Divider,
-  Portal,
-  Dialog,
   Chip,
 } from "react-native-paper";
-import { useRouter } from "expo-router";
-import { TouchableOpacity } from "react-native";
 
 export default function BookAppointment() {
-  const router = useRouter();
-  const [dialogVisible, setDialogVisible] = useState(false);
-
   return (
     <>
       {/* Header */}
       <Appbar.Header style={styles.header}>
-        <Appbar.BackAction onPress={() => router.back()} color="#fff" />
+        <Appbar.BackAction color="#fff" />
         <Appbar.Content title="Book Consultation" titleStyle={styles.headerTitle} />
       </Appbar.Header>
 
@@ -50,7 +42,7 @@ export default function BookAppointment() {
             </View>
 
             {/* Reviews */}
-            <TouchableOpacity onPress={() => router.push("/reviews")}>
+            <TouchableOpacity>
               <Text style={styles.rating}>⭐ 4.8 (200+ reviews)</Text>
             </TouchableOpacity>
 
@@ -65,28 +57,10 @@ export default function BookAppointment() {
           mode="contained"
           style={styles.bookBtn}
           labelStyle={{ fontWeight: "600", fontSize: 16, color: "#fff" }}
-          onPress={() => setDialogVisible(true)}
         >
           Book Appointment
         </Button>
       </View>
-
-      {/* Confirmation Dialog */}
-      <Portal>
-        <Dialog visible={dialogVisible} onDismiss={() => setDialogVisible(false)}>
-          <Dialog.Title>✅ Appointment Confirmed</Dialog.Title>
-          <Dialog.Content>
-            <Text>
-              Your consultation with{" "}
-              <Text style={{ fontWeight: "bold" }}>Mr. Ramesh Kumar</Text> has
-              been successfully booked.
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setDialogVisible(false)}>Done</Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
     </>
   );
 }

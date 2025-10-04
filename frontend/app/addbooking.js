@@ -1,11 +1,10 @@
 // BookingForm.js
 import { useState } from "react";
-import { Alert, Button, ScrollView, Text, TextInput } from "react-native";
-import { addBooking } from "./services/booking";
+import { Button, ScrollView, Text, TextInput, View } from "react-native";
 
 const BookingForm = () => {
   const [form, setForm] = useState({
-    consultantId: "64f7b8c5e1b2f2a1b3c4d5e6", // default for testing
+    consultantId: "", // optional for UI
     fullName: "",
     contactNumber: "",
     email: "",
@@ -24,43 +23,9 @@ const BookingForm = () => {
     setForm({ ...form, [key]: value });
   };
 
-  const handleSubmit = async () => {
-    // ✅ Validation for required fields
-    const requiredFields = ["consultantId", "fullName", "contactNumber", "email", "serviceRequired"];
-    for (let field of requiredFields) {
-      if (!form[field] || form[field].trim() === "") {
-        Alert.alert("Error", `Please fill the ${field}`);
-        return;
-      }
-    }
-
-    const payload = {
-      consultantId: form.consultantId,
-      fullName: form.fullName,
-      contactNumber: form.contactNumber,
-      email: form.email,
-      propertyType: form.propertyType,
-      propertyLocation: {
-        city: form.city,
-        area: form.area,
-        address: form.address,
-      },
-      serviceRequired: form.serviceRequired,
-      budget: form.budget,
-      consultationMode: form.consultationMode,
-      preferredDateTime: form.preferredDateTime,
-      additionalNotes: form.additionalNotes,
-    };
-
-    try {
-      const res = await addBooking(payload);
-      Alert.alert("Success", res.message || "Booking created successfully!");
-      // Optionally, reset form
-      setForm({ ...form, fullName:"", contactNumber:"", email:"", propertyType:"", city:"", area:"", address:"", serviceRequired:"", budget:"", preferredDateTime:"", additionalNotes:"" });
-    } catch (err) {
-      console.log(err.response?.data || err.message); // Debug API error
-      Alert.alert("Error", err.response?.data?.message || "Failed to book consultant");
-    }
+  const handleSubmit = () => {
+    // No backend logic — UI only
+    console.log("Form submitted (UI only):", form);
   };
 
   return (

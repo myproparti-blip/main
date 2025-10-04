@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+// AddPropertyScreen.js
+import { useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { Button, Card, Text, TextInput } from "react-native-paper";
-import { addProperty, getProperty } from "./services/propertyApi";
 
 export default function AddPropertyScreen() {
   const [form, setForm] = useState({
@@ -21,76 +21,43 @@ export default function AddPropertyScreen() {
     description: "",
   });
 
-  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [properties, setProperties] = useState([]); // 👈 list of properties
-
-  const fetchProperties = async () => {
-    try {
-      const data = await getProperty();
-
-      if (Array.isArray(data)) {
-        setProperties(data);
-      } else if (Array.isArray(data.properties)) {
-        setProperties(data.properties);
-      } else {
-        setProperties([]);
-      }
-    } catch (error) {
-      console.error("Error fetching properties:", error);
-      setProperties([]);
-    }
-  };
-
-  useEffect(() => {
-    fetchProperties();
-  }, []);
+  const [properties, setProperties] = useState([]); // Simulated property list
 
   const handleChange = (field, value) => {
     setForm({ ...form, [field]: value });
   };
 
-  const handleSubmit = async () => {
-    setLoading(true);
-    try {
-      const postData = {
-        ...form,
-        price: Number(form.price) || 0,
-        area: Number(form.area) || 0,
-        bedrooms: Number(form.bedrooms) || 0,
-        bathrooms: Number(form.bathrooms) || 0,
-      };
+  const handleSubmit = () => {
+    // Simulate adding a property locally
+    const newProperty = {
+      ...form,
+      price: Number(form.price) || 0,
+      area: Number(form.area) || 0,
+      bedrooms: Number(form.bedrooms) || 0,
+      bathrooms: Number(form.bathrooms) || 0,
+    };
 
-      const response = await addProperty(postData);
-      setMessage("✅ Property added successfully!");
-      console.log("Added Property:", response);
+    setProperties([newProperty, ...properties]);
+    setMessage("✅ Property added successfully (UI only)");
 
-      // refresh property list
-      fetchProperties();
-
-      // reset form
-      setForm({
-        title: "",
-        propertyType: "",
-        saleType: "",
-        price: "",
-        area: "",
-        bedrooms: "",
-        bathrooms: "",
-        furnishingStatus: "",
-        address: "",
-        city: "",
-        pinCode: "",
-        features: [],
-        images: [""],
-        description: "",
-      });
-    } catch (error) {
-      console.error("Error in handleSubmit:", error);
-      setMessage("❌ Error adding property");
-    } finally {
-      setLoading(false);
-    }
+    // Reset form
+    setForm({
+      title: "",
+      propertyType: "",
+      saleType: "",
+      price: "",
+      area: "",
+      bedrooms: "",
+      bathrooms: "",
+      furnishingStatus: "",
+      address: "",
+      city: "",
+      pinCode: "",
+      features: [],
+      images: [""],
+      description: "",
+    });
   };
 
   return (
@@ -206,12 +173,12 @@ export default function AddPropertyScreen() {
         numberOfLines={3}
         style={styles.input}
       />
+
       {message ? <Text style={{ marginVertical: 10 }}>{message}</Text> : null}
 
       <Button
         mode="contained"
         onPress={handleSubmit}
-        loading={loading}
         style={{ marginTop: 16 }}
       >
         Submit Property
@@ -235,7 +202,7 @@ export default function AddPropertyScreen() {
           </Card>
         ))
       ) : (
-        <Text>No properties found</Text>
+        <Text>No properties added yet.</Text>
       )}
     </ScrollView>
   );
