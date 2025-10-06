@@ -1,15 +1,6 @@
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import {
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  TextInput as RNTextInput,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Image, KeyboardAvoidingView, Modal, Platform, StyleSheet, TextInput as RNTextInput, TouchableOpacity, View } from "react-native";
 import { Button, Checkbox, Text, TextInput, useTheme } from "react-native-paper";
 
 export default function LoginScreen() {
@@ -125,7 +116,7 @@ export default function LoginScreen() {
                     disabled={!isValidPhone() || !agreed}
                     icon="check-decagram"
                   >
-                    Agree & Continue
+                    Agree
                   </Button>
                 </View>
               </>
@@ -297,7 +288,7 @@ const styles = StyleSheet.create({
   },
   cancelBtn: {
     borderWidth: 2,
-    borderColor: "#E53935",
+    borderColor: "#000000",
   },
   agreeBtn: {
     backgroundColor: "#009688",
