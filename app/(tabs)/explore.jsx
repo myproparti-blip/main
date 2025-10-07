@@ -232,7 +232,7 @@ export default function TabtwoScreen() {
           color: "#333",
         }}
       >
-        Your Favorite Properties
+      Properties listing
       </Text>
 
       {/* Filters */}
