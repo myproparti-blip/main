@@ -10,26 +10,38 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import {
   Appbar,
   Button,
   Card,
+  Divider,
   Menu,
   Searchbar,
   Text,
 } from "react-native-paper";
+import { useAuth } from "../../context/AuthContext";
+
 
 const { width } = Dimensions.get("window");
 const cardWidth = width / 3.3;
 
 export default function HomeScreen() {
-  const router = useRouter();
+
+
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [menuVisible, setMenuVisible] = React.useState(false);
-  const [currentLocation, setCurrentLocation] = React.useState("");
+  const [currentLocation, setCurrentLocation] = React.useState("Search consultants or properties");
   const [locationLoading, setLocationLoading] = React.useState(false);
+  const [menuVisible, setMenuVisible] = React.useState(false);
+  const router = useRouter();
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    setMenuVisible(false);
+    await logout();
+    router.replace("/auth/login");
+  };
 
   React.useEffect(() => {
     detectLocation();
@@ -59,20 +71,27 @@ export default function HomeScreen() {
       }
 
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Highest,
+        accuracy: Location.Accuracy.High,
       });
       const geocode = await Location.reverseGeocodeAsync(location.coords);
+
       if (geocode.length > 0) {
-        setCurrentLocation(geocode[0].city || "Your Area");
+        const { city, district, name } = geocode[0];
+        const detected = city || district || name || "Your Area";
+        setCurrentLocation(detected);
+        setSearchQuery(detected);
+      } else {
+        setCurrentLocation("Your Area");
       }
     } catch (err) {
+      console.error("Location error:", err);
       setCurrentLocation("Your Area");
     } finally {
       setLocationLoading(false);
     }
   };
 
-  // === DATA ===
+  // === Property & Consultant Data ===
   const propertyData = [
     {
       title: "Book Consultant",
@@ -305,7 +324,7 @@ export default function HomeScreen() {
   return (
     <ImageBackground
       source={{
-        uri: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=80",
+        uri: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80&h=1600",
       }}
       style={styles.bg}
       resizeMode="cover"
@@ -316,39 +335,47 @@ export default function HomeScreen() {
       >
         <View style={styles.searchContainer}>
           <Searchbar
-            placeholder="Search consultants or properties"
+            placeholder={
+              locationLoading
+                ? "Detecting your location..."
+                : currentLocation
+                  ? ` ${currentLocation}`
+                  : "Search consultants or properties"
+            }
             value={searchQuery}
             onChangeText={setSearchQuery}
             style={styles.searchbar}
             inputStyle={{ fontSize: 14 }}
-            icon={locationLoading ? "crosshairs" : "crosshairs-gps"}
+            icon={locationLoading ? "loading" : "crosshairs-gps"}
             iconColor={currentLocation ? "#009688" : "#999"}
             onIconPress={detectLocation}
           />
+
         </View>
 
-        <Menu
-          visible={menuVisible}
-          onDismiss={() => setMenuVisible(false)}
-          anchor={
-            <Appbar.Action
-              icon="dots-vertical"
-              color="#fff"
-              onPress={() => setMenuVisible(true)}
-            />
-          }
-        >
-          <Menu.Item onPress={() => router.push("/index")} title="Home" />
-          <Menu.Item
-            onPress={() => router.push("/explore")}
-            title="Properties"
+       <Menu
+        visible={menuVisible}
+        onDismiss={() => setMenuVisible(false)}
+        anchor={
+          <Appbar.Action
+            icon="dots-vertical"
+            color="#fff"
+            onPress={() => setMenuVisible(true)}
           />
-          <Menu.Item
-            onPress={() => router.push("/management")}
-            title="Management"
-          />
-        </Menu>
+        }
+      >
+        <Menu.Item onPress={() => router.push("/index")} title="Home" />
+        <Menu.Item onPress={() => router.push("/explore")} title="Properties" />
+        <Menu.Item onPress={() => router.push("/management")} title="Management" />
+        <Divider />
+        <Menu.Item onPress={() => router.push("/profile")} title="Profile" />
+        <Menu.Item onPress={() => router.push("/settings")} title="Settings" />
+        <Divider />
+        <Menu.Item onPress={handleLogout} title="Logout" />
+      </Menu>
       </Appbar.Header>
+
+
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {propertyData.map(renderSection)}
@@ -361,13 +388,35 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   bg: { flex: 1 },
   container: { flex: 1, padding: 16 },
-  searchContainer: { flex: 1, flexDirection: "row", alignItems: "center" },
+  searchContainer: { flex: 1, marginHorizontal: 10 },
   searchbar: {
-    flex: 1,
-    marginVertical: 8,
     borderRadius: 30,
+    elevation: 2,
     backgroundColor: "#fff",
-    height: 40,
+  },
+  locationWrapper: {
+    alignItems: "center",
+    marginTop: 10,
+  },
+  locationChip: {
+    backgroundColor: "#E0F2F1",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+  },
+  loadingBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E0F2F1",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
+  loadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#009688",
   },
   section: { marginBottom: 25 },
   sectionHeader: {
@@ -389,25 +438,20 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "space-between",
   },
-  touchCard: {
-  width: cardWidth,
-  marginBottom: 12,
-},
-
+  touchCard: { width: cardWidth, marginBottom: 12 },
   card: {
-  marginBottom: 12,
-  borderRadius: 16,
-  overflow: "hidden",
-  backgroundColor: "rgba(255, 255, 255, 0.55)",
-  height: 290, // ⬆️ Increased height for listing & management cards
-},
-cardImage: {
-  height: 100, // ⬆️ Slightly taller image for better proportion
-  borderTopLeftRadius: 16,
-  borderTopRightRadius: 16,
-  margin: 6,
-},
-
+    marginBottom: 12,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "rgba(255, 255, 255, 0.55)",
+    height: 290,
+  },
+  cardImage: {
+    height: 100,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    margin: 6,
+  },
   consultName: { fontWeight: "bold", fontSize: 13, color: "#222" },
   consultType: { fontSize: 11, color: "#009688", marginTop: 2 },
   consultReview: { fontSize: 11, color: "#fbc02d", marginVertical: 2 },
