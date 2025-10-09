@@ -8,7 +8,7 @@ import {
   Provider as PaperProvider,
 } from "react-native-paper";
 import "react-native-reanimated";
-import { AuthProvider } from "../context/AuthContext"; // ✅ Now it will work
+import { AuthProvider } from "../context/AuthContext";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -20,8 +20,16 @@ export default function RootLayout() {
       <PaperProvider theme={paperTheme}>
         <ThemeProvider value={navTheme}>
           <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="login" options={{ headerShown: false }} />
-            <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
+            <Stack.Screen name="login" />
+            <Stack.Screen name="(drawer)" />
+            <Stack.Screen name="services" />
+            <Stack.Screen name="explore" />
+            <Stack.Screen name="Explore" />
+            <Stack.Screen name="PropertyDetails" />
+            <Stack.Screen name="profile" />
+            <Stack.Screen name="Delete Account" />
+            <Stack.Screen name="Post Property" />
+            <Stack.Screen name="Logout" />
           </Stack>
           <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
         </ThemeProvider>

@@ -1,345 +1,494 @@
-import { useState } from "react";
-import { FlatList, Image, ScrollView, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from "@react-navigation/native";
+import { useCallback, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Linking,
+  Modal,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from "react-native";
 import {
   Button,
   Card,
+  Checkbox,
   Chip,
-  Divider,
-  IconButton,
-  Menu,
+  FAB,
+  Portal,
   Text,
 } from "react-native-paper";
+import SearchMenuBar from "../components/SearchMenuBar";
+import { fetchingListingData } from "../services/listingtab";
 
-export default function TabtwoScreen() {
-  const [favorites, setFavorites] = useState([
-    {
-      id: "1",
-      title: "3 BHK Apartment in Koramangala",
-      price: 12500000,
-      location: "Bangalore, Karnataka",
-      image:
-        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800",
-      rating: 4.6,
-      area: "1750 sqft",
-      type: "Apartment",
-      isFavorite: true,
-    },
-    {
-      id: "2",
-      title: "2 BHK Flat in Andheri West",
-      price: 9500000,
-      location: "Mumbai, Maharashtra",
-      image:
-        "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800",
-      rating: 4.3,
-      area: "1250 sqft",
-      type: "Flat",
-      isFavorite: true,
-    },
-    {
-      id: "3",
-      title: "Luxury Villa in Jubilee Hills",
-      price: 68000000,
-      location: "Hyderabad, Telangana",
-      image:
-        "https://images.unsplash.com/photo-1613553492125-7f2b0a7b3c42?w=800",
-      rating: 4.9,
-      area: "5200 sqft",
-      type: "Villa",
-      isFavorite: true,
-    },
-    {
-      id: "4",
-      title: "Premium 4 BHK Penthouse in Gurugram",
-      price: 25000000,
-      location: "Gurugram, Haryana",
-      image:
-        "https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=800",
-      rating: 4.8,
-      area: "3200 sqft",
-      type: "Penthouse",
-      isFavorite: true,
-    },
-    {
-      id: "5",
-      title: "1 BHK Studio Apartment in Pune",
-      price: 5500000,
-      location: "Pune, Maharashtra",
-      image:
-        "https://images.unsplash.com/photo-1600607688964-6d1a5c3c1d3c?w=800",
-      rating: 4.2,
-      area: "850 sqft",
-      type: "Studio",
-      isFavorite: true,
-    },
-    {
-      id: "6",
-      title: "Farmhouse with Garden in ECR",
-      price: 15000000,
-      location: "Chennai, Tamil Nadu",
-      image:
-        "https://images.unsplash.com/photo-1599423300746-b62533397364?w=800",
-      rating: 4.7,
-      area: "4000 sqft",
-      type: "Farmhouse",
-      isFavorite: true,
-    },
-    {
-      id: "7",
-      title: "Modern Apartment near Salt Lake",
-      price: 8800000,
-      location: "Kolkata, West Bengal",
-      image:
-        "https://images.unsplash.com/photo-1613977257363-707ba9348227?w=800",
-      rating: 4.4,
-      area: "1400 sqft",
-      type: "Apartment",
-      isFavorite: true,
-    },
-    {
-      id: "8",
-      title: "Sea-facing Villa in Goa",
-      price: 42000000,
-      location: "Goa, India",
-      image:
-        "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800",
-      rating: 4.9,
-      area: "4800 sqft",
-      type: "Villa",
-      isFavorite: true,
-    },
-    {
-      id: "9",
-      title: "Budget 2 BHK in Noida Extension",
-      price: 7500000,
-      location: "Noida, UP",
-      image:
-        "https://images.unsplash.com/photo-1560448075-bb485b067938?w=800",
-      rating: 4.1,
-      area: "1100 sqft",
-      type: "Flat",
-      isFavorite: true,
-    },
-    {
-      id: "10",
-      title: "Premium Smart Home in Ahmedabad",
-      price: 16500000,
-      location: "Ahmedabad, Gujarat",
-      image:
-        "https://images.unsplash.com/photo-1616627452679-4b1e9f6e1f1b?w=800",
-      rating: 4.8,
-      area: "2400 sqft",
-      type: "Smart Home",
-      isFavorite: true,
-    },
+const BASE_URL = "http://192.168.29.78:5000";
+
+export default function ExplorerScreen() {
+  const navigation = useNavigation();
+  const route = useRoute();
+
+  const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [userId, setUserId] = useState(null);
+
+  const [filterVisible, setFilterVisible] = useState(false);
+  const [cityFilter, setCityFilter] = useState("");
+  const [minBudget, setMinBudget] = useState("");
+  const [maxBudget, setMaxBudget] = useState("");
+  const [bedrooms, setBedrooms] = useState("");
+  const [bathrooms, setBathrooms] = useState("");
+  const [listingTypeFilter, setListingTypeFilter] = useState("Any");
+  const [furnishing, setFurnishing] = useState("Any");
+  const [possessionStatus, setPossessionStatus] = useState("Any");
+  const [amenitiesFilter, setAmenitiesFilter] = useState({
+    lift: false,
+    parking: false,
+    gym: false,
+    swimmingPool: false,
+    security: false,
+  });
+
+  const loadUser = async () => {
+    const user = await AsyncStorage.getItem("user");
+    if (user) {
+      const parsed = JSON.parse(user);
+      setUserId(parsed._id);
+    }
+  };
+
+  const loadProperties = async () => {
+    try {
+      setLoading(true);
+      const data = await fetchingListingData();
+      setProperties(
+        data.map((p) => ({
+          id: p._id,
+          userId: p.user,
+          title: p.title,
+          price: p.price,
+          city: p.city,
+          state: p.state,
+          location: `${p.city || ""}${p.city && p.state ? ", " : ""}${p.state || ""}`,
+          images: (p.images || []).map((img) =>
+            img.startsWith("http")
+              ? img
+              : `${BASE_URL}/${img.replace(/\\/g, "/")}`
+          ),
+          description: p.description || "",
+          area: p.builtUpArea || 0,
+          propertyType: p.propertyType || "Property",
+          listingType: p.listingType || "Sale",
+          bedrooms: p.bedrooms || p.bhk || null,
+          bathrooms: p.bathrooms || null,
+          status: p.status || p.completionStatus || "Unknown",
+          amenities: p.amenities || [],
+          brochureUrl: p.brochureUrl || "",
+          createdAt: p.createdAt,
+        }))
+      );
+    } catch (err) {
+      console.error("Error fetching properties:", err);
+      Alert.alert("Error", "Failed to load properties");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadUser();
+      loadProperties();
+      if (route.params?.refresh) {
+        loadProperties();
+        navigation.setParams({ refresh: false });
+      }
+    }, [route.params?.refresh])
+  );
+
+  const filteredProperties = useMemo(() => {
+    return properties.filter((p) => {
+      if (cityFilter && !p.city?.toLowerCase().includes(cityFilter.toLowerCase()))
+        return false;
+      if (listingTypeFilter !== "Any" && p.listingType !== listingTypeFilter)
+        return false;
+      if (possessionStatus !== "Any" && p.status !== possessionStatus) return false;
+      if (furnishing !== "Any" && p.furnishing !== furnishing) return false;
+      if (bedrooms && Number(p.bedrooms) !== Number(bedrooms)) return false;
+      if (bathrooms && Number(p.bathrooms) !== Number(bathrooms)) return false;
+      const price = Number(p.price) || 0;
+      if (minBudget && price < Number(minBudget)) return false;
+      if (maxBudget && price > Number(maxBudget)) return false;
+      const selectedAmenities = Object.keys(amenitiesFilter).filter((k) => amenitiesFilter[k]);
+      if (selectedAmenities.length) {
+        for (let a of selectedAmenities) {
+          if (!p.amenities || !p.amenities.includes(a)) return false;
+        }
+      }
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        if (
+          !(p.title?.toLowerCase()?.includes(q) ||
+            p.location?.toLowerCase()?.includes(q) ||
+            p.description?.toLowerCase()?.includes(q))
+        )
+          return false;
+      }
+      return true;
+    });
+  }, [
+    properties,
+    cityFilter,
+    minBudget,
+    maxBudget,
+    bedrooms,
+    bathrooms,
+    listingTypeFilter,
+    furnishing,
+    possessionStatus,
+    amenitiesFilter,
+    searchQuery,
   ]);
 
-  const [filterType, setFilterType] = useState("All");
-  const [sortMenuVisible, setSortMenuVisible] = useState(false);
-  const [sortOption, setSortOption] = useState("None");
-
-  const toggleFavorite = (id) => {
-    setFavorites((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, isFavorite: !item.isFavorite } : item
-      )
-    );
+  const handleDownloadBrochure = async (url) => {
+    try {
+      if (!url) return Alert.alert("No brochure available");
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert("Error", "Cannot open brochure link.");
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Error", "Failed to open brochure.");
+    }
   };
-
-  const removeAllFavorites = () => {
-    setFavorites([]);
-  };
-
-  const filteredFavorites = favorites
-    .filter((item) => filterType === "All" || item.type === filterType)
-    .sort((a, b) => {
-      if (sortOption === "Price: Low → High") return a.price - b.price;
-      if (sortOption === "Price: High → Low") return b.price - a.price;
-      return 0;
-    });
 
   const renderProperty = ({ item }) => (
     <Card
       style={{
         marginVertical: 10,
-        borderRadius: 15,
+        borderRadius: 16,
         overflow: "hidden",
-        elevation: 3,
+        elevation: 4,
         backgroundColor: "#fff",
       }}
     >
-      <Card.Cover source={{ uri: item.image }} style={{ height: 180 }} />
-      <Card.Title
-        title={item.title}
-        subtitle={item.location}
-        right={() => (
-          <IconButton
-            icon={item.isFavorite ? "heart" : "heart-outline"}
-            iconColor={item.isFavorite ? "#e91e63" : "#888"}
-            onPress={() => toggleFavorite(item.id)}
-          />
-        )}
-      />
-      <Card.Content>
-        <Text
-          variant="titleMedium"
-          style={{ fontWeight: "bold", color: "#222" }}
-        >
-          ₹{item.price.toLocaleString()}
+      <TouchableOpacity
+        onPress={() => navigation.navigate("PropertyDetails", { id: item.id })}
+      >
+        <Card.Cover
+          source={{
+            uri:
+              item.images?.[0] ||
+              "https://cdn-icons-png.flaticon.com/512/4076/4076549.png",
+          }}
+          style={{ height: 200 }}
+        />
+      </TouchableOpacity>
+
+      <Card.Content style={{ paddingVertical: 10 }}>
+        <Text variant="titleMedium" style={{ fontWeight: "700", color: "#333" }}>
+          {item.title}
         </Text>
-        <Text variant="bodySmall" style={{ color: "#666", marginBottom: 4 }}>
-          {item.area} | {item.type}
+
+        <Text variant="bodyMedium" style={{ color: "#009688", marginVertical: 2 }}>
+          ₹{Number(item.price || 0).toLocaleString()}
         </Text>
-        <Text variant="bodySmall" style={{ color: "#888" }}>
-          ⭐ {item.rating} • Excellent Location
+
+        <Text variant="bodySmall" style={{ color: "#555", marginTop: 2 }}>
+          🏠 {item.propertyType}
         </Text>
+
+        <Text variant="bodySmall" style={{ color: "#777", marginTop: 6 }}>
+          {item.description?.length > 100
+            ? `${item.description.slice(0, 100)}...`
+            : item.description}
+        </Text>
+
+        <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 8 }}>
+          <Chip style={{ margin: 3 }}>{item.listingType}</Chip>
+          <Chip style={{ margin: 3 }}>
+            {item.area ? `${item.area} sq.ft` : "N/A"}
+          </Chip>
+          {item.bedrooms && <Chip style={{ margin: 3 }}>{item.bedrooms} BHK</Chip>}
+          {item.bathrooms && <Chip style={{ margin: 3 }}>{item.bathrooms} Bath</Chip>}
+        </View>
       </Card.Content>
 
-      <Card.Actions
-        style={{
-          justifyContent: "space-between",
-          paddingHorizontal: 10,
-          marginTop: 10,
-          marginBottom: 6,
-        }}
-      >
+      <Card.Actions style={{ justifyContent: "space-between", padding: 10 }}>
         <Button
           mode="contained"
-          buttonColor="#1976d2"
-          onPress={() => alert(`Viewing details for ${item.title}`)}
+          buttonColor="#009688"
+          onPress={() => navigation.navigate("PropertyDetails", { id: item.id })}
         >
           View Details
         </Button>
         <Button
           mode="outlined"
-          textColor="#1976d2"
-          onPress={() => alert(`Contacting agent for ${item.title}`)}
+          textColor="#009688"
+          icon="download"
+          onPress={() => handleDownloadBrochure(item.brochureUrl)}
         >
-          Contact Agent
+          Brochure
         </Button>
       </Card.Actions>
     </Card>
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#f8f9fa", padding: 10 }}>
-      <Text
-        variant="headlineMedium"
+    <View style={{ flex: 1, backgroundColor: "#E0F2F1" }}>
+      {/* 🔍 Search & Menu Bar */}
+      <SearchMenuBar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onSearchChange={setSearchQuery}
+      />
+
+      {/* Filter Button (left side now) */}
+      <View
         style={{
-          textAlign: "center",
-          fontWeight: "bold",
-          marginVertical: 10,
-          color: "#333",
+          backgroundColor: "#E0F2F1",
+          paddingVertical: 10,
+          paddingHorizontal: 15,
+          alignItems: "flex-start",
         }}
       >
-      Properties listing
-      </Text>
-
-      {/* Filters */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ marginBottom: 10 }}
-      >
-        {["All", "Apartment", "Flat", "Villa", "Penthouse", "Farmhouse", "Studio"].map(
-          (type) => (
-            <Chip
-              key={type}
-              selected={filterType === type}
-              onPress={() => setFilterType(type)}
-              style={{
-                marginRight: 6,
-                backgroundColor:
-                  filterType === type ? "#1976d2" : "rgba(0,0,0,0.05)",
-              }}
-              textStyle={{
-                color: filterType === type ? "#fff" : "#1976d2",
-                fontWeight: "600",
-              }}
-            >
-              {type}
-            </Chip>
-          )
-        )}
-      </ScrollView>
-
-      {/* Sorting Menu */}
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Menu
-          visible={sortMenuVisible}
-          onDismiss={() => setSortMenuVisible(false)}
-          anchor={
-            <Button
-              mode="outlined"
-              icon="sort"
-              onPress={() => setSortMenuVisible(true)}
-            >
-              {sortOption === "None" ? "Sort by" : sortOption}
-            </Button>
-          }
-        >
-          <Menu.Item
-            onPress={() => {
-              setSortOption("Price: Low → High");
-              setSortMenuVisible(false);
-            }}
-            title="Price: Low → High"
-          />
-          <Menu.Item
-            onPress={() => {
-              setSortOption("Price: High → Low");
-              setSortMenuVisible(false);
-            }}
-            title="Price: High → Low"
-          />
-          <Divider />
-          <Menu.Item
-            onPress={() => {
-              setSortOption("None");
-              setSortMenuVisible(false);
-            }}
-            title="Clear Sort"
-          />
-        </Menu>
-
         <Button
-          icon="delete"
-          mode="text"
-          textColor="#e53935"
-          onPress={removeAllFavorites}
+          icon="filter-variant"
+          mode="contained-tonal"
+          onPress={() => setFilterVisible(true)}
+          buttonColor="#009688"
+          textColor="#fff"
         >
-          Clear All
+          Filter
         </Button>
       </View>
 
       {/* Property List */}
-      {filteredFavorites.length > 0 ? (
+      {loading ? (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator size="large" color="#009688" />
+          <Text style={{ marginTop: 8 }}>Loading properties...</Text>
+        </View>
+      ) : (
         <FlatList
-          data={filteredFavorites}
+          data={filteredProperties}
           keyExtractor={(item) => item.id}
           renderItem={renderProperty}
-          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ padding: 10, paddingBottom: 100 }}
         />
-      ) : (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            opacity: 0.7,
-          }}
-        >
-          <Image
-            source={{
-              uri: "https://cdn-icons-png.flaticon.com/512/4076/4076549.png",
-            }}
-            style={{ width: 120, height: 120, marginBottom: 20 }}
-          />
-          <Text variant="titleMedium" style={{ color: "#666" }}>
-            No favorite properties yet.
-          </Text>
-        </View>
       )}
+
+      {/* Filter Modal */}
+      <Portal>
+        <Modal
+          visible={filterVisible}
+          animationType="slide"
+          transparent
+          onRequestClose={() => {}}
+        >
+          <TouchableWithoutFeedback>
+            <View
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "flex-start",
+                backgroundColor: "rgba(0,0,0,0.3)",
+              }}
+            >
+              <ScrollView
+                style={{
+                  backgroundColor: "#fff",
+                  marginLeft: 20,
+                  borderRadius: 12,
+                  padding: 16,
+                  maxHeight: "60%",
+                  width: "85%",
+                }}
+              >
+                <Text
+                  variant="titleMedium"
+                  style={{ fontWeight: "700", marginBottom: 10 }}
+                >
+                  Filters
+                </Text>
+
+                <TextInput
+                  placeholder="City"
+                  value={cityFilter}
+                  onChangeText={setCityFilter}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: "#ccc",
+                    borderRadius: 8,
+                    padding: 8,
+                    marginBottom: 10,
+                  }}
+                />
+
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <TextInput
+                    placeholder="Min Price"
+                    keyboardType="numeric"
+                    value={minBudget}
+                    onChangeText={setMinBudget}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: "#ccc",
+                      borderRadius: 8,
+                      padding: 8,
+                      width: "48%",
+                    }}
+                  />
+                  <TextInput
+                    placeholder="Max Price"
+                    keyboardType="numeric"
+                    value={maxBudget}
+                    onChangeText={setMaxBudget}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: "#ccc",
+                      borderRadius: 8,
+                      padding: 8,
+                      width: "48%",
+                    }}
+                  />
+                </View>
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    marginTop: 10,
+                  }}
+                >
+                  <TextInput
+                    placeholder="Bedrooms"
+                    keyboardType="numeric"
+                    value={bedrooms}
+                    onChangeText={setBedrooms}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: "#ccc",
+                      borderRadius: 8,
+                      padding: 8,
+                      width: "48%",
+                    }}
+                  />
+                  <TextInput
+                    placeholder="Bathrooms"
+                    keyboardType="numeric"
+                    value={bathrooms}
+                    onChangeText={setBathrooms}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: "#ccc",
+                      borderRadius: 8,
+                      padding: 8,
+                      width: "48%",
+                    }}
+                  />
+                </View>
+
+                <Text style={{ marginTop: 10, fontWeight: "600" }}>Listing Type:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {["Any", "Sale", "Rent"].map((type) => (
+                    <Chip
+                      key={type}
+                      selected={listingTypeFilter === type}
+                      onPress={() => setListingTypeFilter(type)}
+                      style={{
+                        marginRight: 6,
+                        backgroundColor:
+                          listingTypeFilter === type ? "#009688" : "#eee",
+                      }}
+                      textStyle={{
+                        color: listingTypeFilter === type ? "#fff" : "#000",
+                      }}
+                    >
+                      {type}
+                    </Chip>
+                  ))}
+                </ScrollView>
+
+                <Text style={{ marginTop: 10, fontWeight: "600" }}>Amenities:</Text>
+                {Object.keys(amenitiesFilter).map((a) => (
+                  <View key={a} style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Checkbox
+                      status={amenitiesFilter[a] ? "checked" : "unchecked"}
+                      onPress={() =>
+                        setAmenitiesFilter((prev) => ({ ...prev, [a]: !prev[a] }))
+                      }
+                    />
+                    <Text>{a}</Text>
+                  </View>
+                ))}
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    marginTop: 16,
+                  }}
+                >
+                  <Button
+                    mode="outlined"
+                    onPress={() => {
+                      setCityFilter("");
+                      setMinBudget("");
+                      setMaxBudget("");
+                      setBedrooms("");
+                      setBathrooms("");
+                      setListingTypeFilter("Any");
+                      setAmenitiesFilter({
+                        lift: false,
+                        parking: false,
+                        gym: false,
+                        swimmingPool: false,
+                        security: false,
+                      });
+                      setFilterVisible(false);
+                    }}
+                  >
+                    Reset
+                  </Button>
+                  <Button
+                    mode="contained"
+                    buttonColor="#009688"
+                    onPress={() => setFilterVisible(false)}
+                  >
+                    Apply
+                  </Button>
+                </View>
+              </ScrollView>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+      </Portal>
+
+      {/* FAB */}
+      <FAB
+        icon="plus"
+        label="Post Property"
+        style={{
+          position: "absolute",
+          right: 16,
+          bottom: 16,
+          backgroundColor: "#009688",
+        }}
+        color="#fff"
+        onPress={() => navigation.navigate("PostProperty")}
+      />
     </View>
   );
 }

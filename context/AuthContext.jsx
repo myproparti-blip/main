@@ -7,12 +7,14 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load user from storage
   useEffect(() => {
     const loadUser = async () => {
       try {
         const storedUser = await AsyncStorage.getItem("user");
-        if (storedUser) setUser(JSON.parse(storedUser));
+        const accessToken = await AsyncStorage.getItem("accessToken");
+        if (storedUser && accessToken) {
+          setUser({ ...JSON.parse(storedUser), accessToken });
+        }
       } catch (e) {
         console.log("Error loading user", e);
       } finally {
@@ -22,16 +24,19 @@ export const AuthProvider = ({ children }) => {
     loadUser();
   }, []);
 
-  // Save user
-  const login = async (userData) => {
-    setUser(userData);
-    await AsyncStorage.setItem("user", JSON.stringify(userData));
+  // ✅ Store user + tokens after login
+  const login = async (data) => {
+    const { user, accessToken, refreshToken } = data;
+    await AsyncStorage.setItem("user", JSON.stringify(user));
+    await AsyncStorage.setItem("accessToken", accessToken);
+    await AsyncStorage.setItem("refreshToken", refreshToken);
+    setUser({ ...user, accessToken });
   };
 
-  // Logout user
+  // ✅ Logout and clear all
   const logout = async () => {
+    await AsyncStorage.multiRemove(["user", "accessToken", "refreshToken"]);
     setUser(null);
-    await AsyncStorage.removeItem("user");
   };
 
   return (
@@ -41,5 +46,4 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// ✅ Custom hook (export only once)
 export const useAuth = () => useContext(AuthContext);

@@ -1,9 +1,18 @@
 import { useRouter } from "expo-router";
-import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useMemo, useState } from "react";
+import {
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Button, Card, Text } from "react-native-paper";
+import SearchMenuBar from "../components/SearchMenuBar"; // ✅ Import your SearchMenuBar
 
 const { width } = Dimensions.get("window");
-const cardWidth = (width - 60) / 3; // 3 columns
+const cardWidth = (width - 60) / 2; // 2 columns for better visibility
 
 const properties = [
   {
@@ -70,6 +79,35 @@ const properties = [
 
 const Management = () => {
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState(null);
+
+  // ✅ Filter logic based on searchQuery
+  const filteredProperties = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    return properties.filter(
+      (p) =>
+        p.name.toLowerCase().includes(query) ||
+        p.location.toLowerCase().includes(query) ||
+        p.status.toLowerCase().includes(query)
+    );
+  }, [searchQuery]);
+
+  // ✅ Detect location (you can connect with Expo Location API)
+  const detectLocation = async () => {
+    try {
+      setLocationLoading(true);
+      // Simulate detecting location
+      setTimeout(() => {
+        setCurrentLocation("Surat, Gujarat");
+        setLocationLoading(false);
+      }, 1500);
+    } catch (err) {
+      setLocationLoading(false);
+      console.error("Location error:", err);
+    }
+  };
 
   const handleOpenDetails = (property) => {
     router.push({
@@ -79,60 +117,70 @@ const Management = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text variant="headlineMedium" style={styles.header}>
-        Property Management
-      </Text>
+    <View style={{ flex: 1, backgroundColor: "#f9f9f9" }}>
+      {/* ✅ Search Menu Bar Added */}
+      <SearchMenuBar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onSearchChange={setSearchQuery}
+        detectLocation={detectLocation}
+        locationLoading={locationLoading}
+        currentLocation={currentLocation}
+      />
 
-      <View style={styles.grid}>
-        {properties.map((property) => (
-          <Card key={property.id} style={styles.card}>
-            <TouchableOpacity onPress={() => handleOpenDetails(property)}>
-              <Image source={{ uri: property.image }} style={styles.image} />
-            </TouchableOpacity>
-            <Card.Content>
-              <Text style={styles.title}>{property.name}</Text>
-              <Text style={styles.location}>{property.location}</Text>
-              <Text
-                style={[
-                  styles.status,
-                  {
-                    color:
-                      property.status === "Available"
-                        ? "green"
-                        : property.status === "Occupied"
-                        ? "red"
-                        : "orange",
-                  },
-                ]}
-              >
-                {property.status}
-              </Text>
-            </Card.Content>
-            <Card.Actions>
-              <Button
-                mode="outlined"
-                textColor="#0066cc"
-                onPress={() => handleOpenDetails(property)}
-              >
-                Details
-              </Button>
-            </Card.Actions>
-          </Card>
-        ))}
-      </View>
-    </ScrollView>
+      {/* ✅ Property Grid */}
+      <ScrollView style={styles.container}>
+        {filteredProperties.length > 0 ? (
+          <View style={styles.grid}>
+            {filteredProperties.map((property) => (
+              <Card key={property.id} style={styles.card}>
+                <TouchableOpacity onPress={() => handleOpenDetails(property)}>
+                  <Image source={{ uri: property.image }} style={styles.image} />
+                </TouchableOpacity>
+                <Card.Content>
+                  <Text style={styles.title}>{property.name}</Text>
+                  <Text style={styles.location}>{property.location}</Text>
+                  <Text
+                    style={[
+                      styles.status,
+                      {
+                        color:
+                          property.status === "Available"
+                            ? "green"
+                            : property.status === "Occupied"
+                            ? "red"
+                            : "orange",
+                      },
+                    ]}
+                  >
+                    {property.status}
+                  </Text>
+                  <Text style={styles.price}>{property.price}</Text>
+                </Card.Content>
+                <Card.Actions>
+                  <Button
+                    mode="contained-tonal"
+                    textColor="#00796B"
+                    onPress={() => handleOpenDetails(property)}
+                  >
+                    Details
+                  </Button>
+                </Card.Actions>
+              </Card>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.empty}>
+            <Text style={{ color: "#666", fontSize: 16 }}>No matching properties found</Text>
+          </View>
+        )}
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: "#f9f9f9" },
-  header: {
-    fontWeight: "700",
-    marginBottom: 16,
-    color: "#222",
-    textAlign: "center",
-  },
+  container: { flex: 1, padding: 16 },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -146,10 +194,21 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     elevation: 3,
   },
-  image: { width: "100%", height: 100, borderTopLeftRadius: 12, borderTopRightRadius: 12 },
+  image: {
+    width: "100%",
+    height: 100,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
   title: { fontWeight: "bold", marginTop: 6 },
   location: { fontSize: 12, color: "#666" },
   status: { marginTop: 4, fontWeight: "600" },
+  price: { color: "#009688", marginTop: 4, fontWeight: "bold" },
+  empty: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 100,
+  },
 });
 
 export default Management;

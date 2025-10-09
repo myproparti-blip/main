@@ -1,254 +1,184 @@
-import { useState } from "react";
-import { FlatList, Image, View } from "react-native";
-import { Button, Card, Chip, IconButton, Searchbar, Text } from "react-native-paper";
+import { useRouter } from "expo-router";
+import { useMemo, useState } from "react";
+import {
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { Button, Card, Text } from "react-native-paper";
+import SearchMenuBar from "../components/SearchMenuBar";
 
-const CONSULTANTS = {
-  Legal: [
-    {
-      id: 1,
-      name: "Adv. Ramesh Kumar",
-      title: "Property Legal Advisor",
-      rating: 4.8,
-      experience: "12 yrs",
-      reviews: 248,
-      price: "₹999 / session",
-      languages: ["English", "Hindi", "Kannada"],
-      image: "https://images.unsplash.com/photo-1603415526960-f8f0f3fc0c23?w=800",
-      desc: "Specialist in real estate documentation, property title and legal verification.",
-    },
-    {
-      id: 2,
-      name: "Adv. Priya Deshmukh",
-      title: "Senior Legal Consultant",
-      rating: 4.9,
-      experience: "15 yrs",
-      reviews: 312,
-      price: "₹1499 / session",
-      languages: ["English", "Marathi", "Hindi"],
-      image: "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=800",
-      desc: "Expert in NRI property disputes and legal due diligence.",
-    },
-  ],
-  Vastu: [
-    {
-      id: 3,
-      name: "Dr. Neha Sharma",
-      title: "Certified Vastu Consultant",
-      rating: 4.7,
-      experience: "8 yrs",
-      reviews: 180,
-      price: "₹799 / session",
-      languages: ["English", "Hindi", "Gujarati"],
-      image: "https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=800",
-      desc: "Helps create energy-balanced homes for better health, wealth, and peace.",
-    },
-  ],
-  HomeLoan: [
-    {
-      id: 5,
-      name: "Ankit Mehra",
-      title: "Loan Advisor - HDFC",
-      rating: 4.9,
-      experience: "7 yrs",
-      reviews: 320,
-      price: "Free Consultation",
-      languages: ["English", "Hindi"],
-      image: "https://images.unsplash.com/photo-1603415526960-f8f0f3fc0c23?w=800",
-      desc: "Provides assistance with home loan eligibility, interest rates, and documentation.",
-    },
-  ],
-  Interiors: [
-    {
-      id: 7,
-      name: "Kavya Bansal",
-      title: "Home Interior Designer",
-      rating: 4.9,
-      experience: "10 yrs",
-      reviews: 450,
-      price: "₹1199 / session",
-      languages: ["English", "Hindi"],
-      image: "https://images.unsplash.com/photo-1615874959474-d609969a20ed?w=800",
-      desc: "Transforms spaces with aesthetic design and space optimization.",
-    },
-  ],
-};
 
-export default function ServicesScreen() {
-  const [selectedCategory, setSelectedCategory] = useState("Legal");
+const { width } = Dimensions.get("window");
+const cardWidth = (width - 60) / 2;
+
+// Dummy consultant data (replace with API later)
+const consultants = [
+  {
+    id: 1,
+    name: "Ravi Sharma",
+    designation: "Property Consultant",
+    experience: "6 years",
+    location: "Surat, Gujarat",
+    rating: 4.8,
+    image:
+      "https://images.unsplash.com/photo-1603415526960-f7e0328a1ec0?auto=format&fit=crop&w=600&q=60",
+    fees: "₹1500 / session",
+  },
+  {
+    id: 2,
+    name: "Anjali Mehta",
+    designation: "Investment Advisor",
+    experience: "5 years",
+    location: "Mumbai, Maharashtra",
+    rating: 4.6,
+    image:
+      "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?auto=format&fit=crop&w=600&q=60",
+    fees: "₹1200 / session",
+  },
+  {
+    id: 3,
+    name: "Rahul Verma",
+    designation: "Legal Consultant",
+    experience: "8 years",
+    location: "Pune, Maharashtra",
+    rating: 4.9,
+    image:
+      "https://images.unsplash.com/photo-1598970434795-0c54fe7c0644?auto=format&fit=crop&w=600&q=60",
+    fees: "₹2000 / session",
+  },
+  {
+    id: 4,
+    name: "Sneha Patel",
+    designation: "Real Estate Expert",
+    experience: "7 years",
+    location: "Ahmedabad, Gujarat",
+    rating: 4.7,
+    image:
+      "https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=600&q=60",
+    fees: "₹1800 / session",
+  },
+];
+
+export default function Services() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState(null);
 
-  const filteredConsultants = CONSULTANTS[selectedCategory].filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // ✅ Filter consultants by search
+  const filteredConsultants = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    return consultants.filter(
+      (c) =>
+        c.name.toLowerCase().includes(query) ||
+        c.designation.toLowerCase().includes(query) ||
+        c.location.toLowerCase().includes(query)
+    );
+  }, [searchQuery]);
 
-  const handleBook = (consultant) => alert(`Booking consultation with ${consultant.name}`);
-  const handleChat = (consultant) => alert(`Starting chat with ${consultant.name}`);
-  const handleCall = (consultant) => alert(`Calling ${consultant.name}`);
+  // ✅ Detect location simulation
+  const detectLocation = async () => {
+    try {
+      setLocationLoading(true);
+      setTimeout(() => {
+        setCurrentLocation("Surat, Gujarat");
+        setLocationLoading(false);
+      }, 1500);
+    } catch (err) {
+      setLocationLoading(false);
+      console.error("Location error:", err);
+    }
+  };
 
-  const renderConsultant = ({ item }) => (
-    <Card
-      style={{
-        marginVertical: 8,
-        borderRadius: 15,
-        overflow: "hidden",
-        elevation: 3,
-        backgroundColor: "#fff",
-      }}
-    >
-      <View style={{ flexDirection: "row" }}>
-        <Image
-          source={{ uri: item.image }}
-          style={{
-            width: 100,
-            height: 100,
-            borderRadius: 12,
-            margin: 10,
-            backgroundColor: "#f2f2f2",
-          }}
-        />
-        <View style={{ flex: 1, justifyContent: "center", paddingRight: 10 }}>
-          <Text variant="titleMedium" style={{ fontWeight: "bold", color: "#222" }}>
-            {item.name}
-          </Text>
-          <Text variant="bodySmall" style={{ color: "#777" }}>
-            {item.title}
-          </Text>
-          <Text variant="bodyMedium" style={{ color: "#1976d2", marginTop: 4 }}>
-            ⭐ {item.rating} ({item.reviews} reviews)
-          </Text>
-          <Text variant="bodySmall" style={{ color: "#555" }}>
-            {item.experience} experience
-          </Text>
-        </View>
-      </View>
-
-      <Card.Content>
-        <Text variant="bodySmall" style={{ color: "#666", marginBottom: 8 }}>
-          {item.desc}
-        </Text>
-
-        <View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 8 }}>
-          {item.languages.slice(0, 3).map((lang, index) => (
-            <Chip
-              key={index}
-              style={{
-                marginRight: 6,
-                marginBottom: 4,
-                backgroundColor: "#e3f2fd",
-                borderRadius: 8,
-              }}
-              textStyle={{ color: "#1976d2", fontSize: 12 }}
-            >
-              {lang}
-            </Chip>
-          ))}
-        </View>
-      </Card.Content>
-
-      <Card.Actions
-        style={{
-          justifyContent: "space-between",
-          marginBottom: 8,
-          marginHorizontal: 8,
-        }}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <IconButton icon="chat" size={20} onPress={() => handleChat(item)} />
-          <IconButton icon="phone" size={20} onPress={() => handleCall(item)} />
-        </View>
-        <Button mode="contained" buttonColor="#1976d2" onPress={() => handleBook(item)}>
-          Book Consultation
-        </Button>
-      </Card.Actions>
-    </Card>
-  );
+  // ✅ Navigate to consultant details (works inside tabs)
+  const handleOpenDetails = (consultant) => {
+    router.push({
+      pathname: "/consultantDetails",
+      params: { ...consultant },
+    });
+  };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#f3f5f9" }}>
-      {/* Simple blue header (no background image now) */}
-      <View
-        style={{
-          backgroundColor: "#1976d2",
-          paddingVertical: 18,
-          borderBottomLeftRadius: 20,
-          borderBottomRightRadius: 20,
-          marginBottom: 12,
-        }}
-      >
-        <Text
-          variant="headlineMedium"
-          style={{
-            textAlign: "center",
-            color: "#fff",
-            fontWeight: "bold",
-          }}
-        >
-          Book a Property Consultant
-        </Text>
-      </View>
+    <View style={{ flex: 1, backgroundColor: "#f9f9f9" }}>
+      {/* ✅ Search bar on top */}
+      <SearchMenuBar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onSearchChange={setSearchQuery}
+        detectLocation={detectLocation}
+        locationLoading={locationLoading}
+        currentLocation={currentLocation}
+      />
 
-      <View style={{ paddingHorizontal: 10 }}>
-        {/* Category Chips */}
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "center",
-            flexWrap: "wrap",
-            marginBottom: 10,
-          }}
-        >
-          {Object.keys(CONSULTANTS).map((category) => (
-            <Chip
-              key={category}
-              selected={selectedCategory === category}
-              onPress={() => setSelectedCategory(category)}
-              style={{
-                margin: 4,
-                backgroundColor: selectedCategory === category ? "#1976d2" : "#fff",
-              }}
-              textStyle={{
-                color: selectedCategory === category ? "#fff" : "#1976d2",
-                fontWeight: "600",
-              }}
-            >
-              {category}
-            </Chip>
-          ))}
-        </View>
-
-        <Searchbar
-          placeholder="Search consultant or service..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          style={{ marginBottom: 10, borderRadius: 12 }}
-        />
-
-        <FlatList
-          data={filteredConsultants}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderConsultant}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 80 }}
-        />
-      </View>
-
-      <Button
-        mode="contained"
-        onPress={() => alert("View All Available Consultants")}
-        style={{
-          position: "absolute",
-          bottom: 20,
-          alignSelf: "center",
-          borderRadius: 30,
-          backgroundColor: "#1976d2",
-          width: "80%",
-          elevation: 5,
-        }}
-      >
-        View All Consultants
-      </Button>
+      {/* ✅ Consultants Grid */}
+      <ScrollView style={styles.container}>
+        {filteredConsultants.length > 0 ? (
+          <View style={styles.grid}>
+            {filteredConsultants.map((consultant) => (
+              <Card key={consultant.id} style={styles.card}>
+                <TouchableOpacity onPress={() => handleOpenDetails(consultant)}>
+                  <Image source={{ uri: consultant.image }} style={styles.image} />
+                </TouchableOpacity>
+                <Card.Content>
+                  <Text style={styles.name}>{consultant.name}</Text>
+                  <Text style={styles.designation}>{consultant.designation}</Text>
+                  <Text style={styles.location}>{consultant.location}</Text>
+                  <Text style={styles.experience}>Experience: {consultant.experience}</Text>
+                  <Text style={styles.rating}>⭐ {consultant.rating}</Text>
+                  <Text style={styles.fees}>{consultant.fees}</Text>
+                </Card.Content>
+                <Card.Actions>
+                  <Button
+                    mode="contained-tonal"
+                    textColor="#00796B"
+                    onPress={() => handleOpenDetails(consultant)}
+                  >
+                    Book Now
+                  </Button>
+                </Card.Actions>
+              </Card>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.empty}>
+            <Text style={{ color: "#666", fontSize: 16 }}>No consultants found</Text>
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 16 },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  card: {
+    width: cardWidth,
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#fff",
+    elevation: 3,
+  },
+  image: {
+    width: "100%",
+    height: 100,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  name: { fontWeight: "bold", marginTop: 6 },
+  designation: { fontSize: 12, color: "#666" },
+  location: { fontSize: 12, color: "#888" },
+  experience: { marginTop: 2, fontSize: 12, color: "#555" },
+  rating: { marginTop: 4, color: "#FFD700", fontWeight: "bold" },
+  fees: { color: "#009688", marginTop: 4, fontWeight: "bold" },
+  empty: { alignItems: "center", justifyContent: "center", marginTop: 100 },
+});
