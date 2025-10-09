@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -13,6 +14,7 @@ import {
 } from "react-native";
 import { Button, Checkbox, Chip, Text, TextInput, useTheme } from "react-native-paper";
 import { sendOtp, verifyOtp } from "./services/login";
+import { getProfile } from "./services/profile";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -25,14 +27,14 @@ export default function LoginScreen() {
   const [otpDigits, setOtpDigits] = useState(["", "", ""]);
   const otpRefs = useRef([]);
   const [agreed, setAgreed] = useState(false);
-  const [selectedRole, setSelectedRole] = useState(null); // ✅ only one role
+  const [selectedRole, setSelectedRole] = useState(null);
 
   const [timer, setTimer] = useState(0);
   const [resendAvailable, setResendAvailable] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Resend timer
+  // Auto timer for resend OTP
   useEffect(() => {
     let t;
     if (timer > 0) t = setTimeout(() => setTimer(timer - 1), 1000);
@@ -51,7 +53,7 @@ export default function LoginScreen() {
       setLoading(true);
       setErrorMsg("");
 
-      const body = { phone: `+91${phone}`, role: [selectedRole] }; // ✅ single role array
+      const body = { phone: `+91${phone}`, role: [selectedRole] };
       const response = await sendOtp(body);
 
       if (response?.success) {
@@ -79,7 +81,18 @@ export default function LoginScreen() {
 
       const response = await verifyOtp({ phone: `+91${phone}`, otp: otpCode });
 
-      if (response?.success) {
+      if (response?.success && response?.accessToken) {
+        // ✅ Store tokens securely
+        await AsyncStorage.setItem("accessToken", response.accessToken);
+        await AsyncStorage.setItem("refreshToken", response.refreshToken);
+        await AsyncStorage.setItem("user", JSON.stringify(response.user));
+
+        // Optional: fetch profile to confirm login
+        const profile = await getProfile(response.accessToken);
+        if (profile.success) {
+          console.log("User Profile:", profile);
+        }
+
         Alert.alert("✅ Success", "Login successful!");
         setVisible(false);
         router.replace("(tabs)");
@@ -137,7 +150,7 @@ export default function LoginScreen() {
                   left={<TextInput.Icon icon="phone" />}
                 />
 
-                {/* ✅ Role Chips - single selection */}
+                {/* ✅ Role Chips */}
                 <View style={styles.rolesContainer}>
                   {["buyer", "seller", "agent", "consultant"].map((role) => (
                     <Chip
@@ -198,7 +211,10 @@ export default function LoginScreen() {
                 </Text>
                 <Text variant="bodyMedium" style={styles.subtitle}>
                   Code sent to +91-{phone}{" "}
-                  <Text style={{ color: theme.colors.primary, fontWeight: "500" }} onPress={() => setStep("phone")}>
+                  <Text
+                    style={{ color: theme.colors.primary, fontWeight: "500" }}
+                    onPress={() => setStep("phone")}
+                  >
                     Change
                   </Text>
                 </Text>
