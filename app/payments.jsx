@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { ActivityIndicator, Alert, Button, Platform, StyleSheet, Text, View } from "react-native";
 import { WebView } from "react-native-webview";
-import { createUpiOrder, verifyUpiPayment } from "../services/payment.js";
+import { createUpiOrder, verifyUpiPayment } from "./services/payment.js";
 const Payment = ({ userId }) => {
   const [loading, setLoading] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [showWebView, setShowWebView] = useState(false);
   const [checkoutHtml, setCheckoutHtml] = useState("");
+
   // Generate clean Razorpay HTML without header and profile
   const getRazorpayHtml = (order) => `
     <!DOCTYPE html>
@@ -131,27 +132,45 @@ const Payment = ({ userId }) => {
         setShowWebView(true);
         setLoading(false);
       }
+    } catch (err) {
+      console.log("Start payment error:", err);
+      setLoading(false);
+      Alert.alert("Error", "Something went wrong: " + err.message);
     }
   };
-  const startPayment = async () => {
-    if (!amount || parseFloat(amount) <= 0) {
-      Alert.alert("Invalid Amount", "Please enter a valid amount.");
-      return;
-    }
-    setLoading(true);
-    const params = {
-      pa: UPI_ID,
-      pn: RECEIVER_NAME,
-      tn: note,
-      am: amount,
-      cu: "INR",
-      // :point_down: this part is critical — set your custom scheme for callback
-      url: "myproparti://upiresponse"
+  // Web implementation
+  const openRazorpayWeb = (res) => {
+    const options = {
+      key: res.key,
+      amount: res.amount,
+      currency: "INR",
+      description: "Payment for service",
+      order_id: res.orderId,
+      theme: { color: "#F37254" },
+      handler: async (response) => {
+        const verifyRes = await verify(
+          response.razorpay_order_id,
+          response.razorpay_payment_id,
+          response.razorpay_signature
+        );
+        if (verifyRes.success) {
+          setPaymentCompleted(true);
+          Alert.alert("Success", "Payment verified successfully!");
+        } else {
+          Alert.alert("Failed", "Payment verification failed!");
+        }
+      },
+      modal: {
+        ondismiss: () => {
+          Alert.alert("Info", "Payment was cancelled");
+        }
+      },
     };
-    const upiUrl =
-      `upi://pay?pa=${params.pa}&pn=${encodeURIComponent(params.pn)}&tn=${encodeURIComponent(
-        params.tn
-      )}&am=${params.am}&cu=${params.cu}&url=${params.url}`;
+    const rzp = new window.Razorpay(options);
+    rzp.open();
+  };
+  // Handle WebView messages
+  const handleWebViewMessage = async (event) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
       switch (data.status) {
