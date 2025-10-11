@@ -1,11 +1,13 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Dimensions, ScrollView, StyleSheet, View } from "react-native";
+import MapView, { Marker } from "react-native-maps";
 import { ActivityIndicator, Button, Card, IconButton, Text } from "react-native-paper";
-import Swiper from "react-native-swiper"; // ✅ For multiple image slider
+import Swiper from "react-native-swiper";
 import { getListingById } from "./services/listingtab";
 
 const STATIC_TOKEN = "my_static_token_123"; // For testing
+const screenWidth = Dimensions.get("window").width;
 
 export default function PropertyDetailsScreen() {
   const { id } = useLocalSearchParams();
@@ -48,126 +50,85 @@ export default function PropertyDetailsScreen() {
   const apiUrl = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Top bar: Back, Search, Share */}
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
+      {/* Top Bar */}
       <View style={styles.topBar}>
         <IconButton icon="arrow-left" size={28} onPress={() => router.back()} />
         <View style={{ flexDirection: "row" }}>
-          <IconButton icon="magnify" size={28} onPress={() => alert("Search feature coming soon")} />
-          <IconButton icon="share-variant" size={28} onPress={() => alert("Share feature coming soon")} />
+          <IconButton icon="magnify" size={28} onPress={() => alert("Search coming soon")} />
+          <IconButton icon="share-variant" size={28} onPress={() => alert("Share coming soon")} />
         </View>
       </View>
 
-      {/* Image slider */}
-      <Card style={{ borderRadius: 10, marginBottom: 15 }}>
-        <Swiper style={{ height: 250 }} showsPagination={true} loop={false}>
+      {/* Image Slider */}
+      <Card style={{ borderRadius: 12, marginBottom: 15 }}>
+        <Swiper
+          style={{ height: 250 }}
+          showsPagination
+          loop={false}
+          containerStyle={{ borderRadius: 12 }}
+        >
           {property.images?.length > 0
-            ? property.images.map((img, index) => (
+            ? property.images.map((img, idx) => (
                 <Card.Cover
-                  key={index}
-                  source={{ uri: `${apiUrl}/${img}` }}
-                  style={{ height: 250 }}
+                  key={idx}
+                  source={{ uri: img.startsWith("http") ? img : `${apiUrl}/${img}` }}
+                  style={{ height: 250, width: screenWidth - 20, borderRadius: 12 }}
                 />
               ))
             : (
-              <Card.Cover
-                source={{ uri: "https://cdn-icons-png.flaticon.com/512/4076/4076549.png" }}
-                style={{ height: 250 }}
-              />
-            )}
+                <Card.Cover
+                  source={{ uri: "https://cdn-icons-png.flaticon.com/512/4076/4076549.png" }}
+                  style={{ height: 250, width: screenWidth - 20, borderRadius: 12 }}
+                />
+              )}
         </Swiper>
 
         <Card.Content>
-          <Text variant="headlineMedium" style={styles.title}>{property.title}</Text>
-          <Text variant="titleMedium" style={styles.price}>₹{property.price?.toLocaleString()}</Text>
-          <Text style={styles.subText}>{property.propertyType} • {property.listingType}</Text>
+          <Text variant="headlineMedium" style={styles.title}>
+            {property.title || "No Title"}
+          </Text>
+          <Text variant="titleMedium" style={styles.price}>
+            ₹{property.price?.toLocaleString() || "N/A"}
+          </Text>
+          <Text style={styles.subText}>
+            {property.propertyType || "Type N/A"} • {property.listingType || "Listing N/A"}
+          </Text>
           <Text style={styles.description}>{property.description || "No description available"}</Text>
 
-          {/* Key details */}
-          <Text style={styles.detail}>📍 {property.city}, {property.state}</Text>
+          {/* Key Details */}
+          <Text style={styles.detail}>📍 {property.city || "City N/A"}, {property.state || "State N/A"}</Text>
           <Text style={styles.detail}>🛋 Furnishing: {property.furnishing || "N/A"}</Text>
           <Text style={styles.detail}>📐 Area: {property.builtUpArea || "N/A"} sq.ft</Text>
-          <Text style={styles.detail}>🧾 Status: {property.status}</Text>
+          <Text style={styles.detail}>🧾 Status: {property.status || "N/A"}</Text>
         </Card.Content>
       </Card>
 
-      {/* More about this flat */}
-      <Card style={styles.sectionCard}>
-        <Card.Content>
-          <Text variant="titleMedium" style={styles.sectionTitle}>More About This Flat</Text>
-          <Text>{property.moreAbout || "Details not available"}</Text>
-        </Card.Content>
-      </Card>
+      {/* Other Sections */}
+      {[
+        { title: "More About This Flat", value: property.moreAbout },
+        { title: "Top Amenities", value: property.amenities?.join(", ") },
+        { title: "Specifications", value: property.specifications?.map(s => `• ${s}`).join("\n") },
+        { title: "Why Buy This Project", value: property.whyBuy },
+        { title: "Ratings & Reviews", value: property.reviews?.map(r => `• ${r.user}: ⭐${r.rating} - ${r.comment}`).join("\n") },
+        { title: "Compare Similar Projects", value: property.similarProjects?.map(p => `• ${p.title} - ₹${p.price?.toLocaleString()}`).join("\n") },
+        { title: "What's Nearby", value: property.nearby?.join(", ") },
+      ].map((section, idx) => (
+        <Card key={idx} style={styles.sectionCard}>
+          <Card.Content>
+            <Text variant="titleMedium" style={styles.sectionTitle}>{section.title}</Text>
+            <Text>{section.value || "Information not available"}</Text>
+          </Card.Content>
+        </Card>
+      ))}
 
-      {/* Top Amenities */}
-      <Card style={styles.sectionCard}>
-        <Card.Content>
-          <Text variant="titleMedium" style={styles.sectionTitle}>Top Amenities</Text>
-          <Text>{property.amenities?.join(", ") || "Not listed"}</Text>
-        </Card.Content>
-      </Card>
-
-      {/* Specifications */}
-      <Card style={styles.sectionCard}>
-        <Card.Content>
-          <Text variant="titleMedium" style={styles.sectionTitle}>Specifications</Text>
-          {property.specifications?.map((spec, idx) => (
-            <Text key={idx}>• {spec}</Text>
-          )) || <Text>Not listed</Text>}
-        </Card.Content>
-      </Card>
-
-      {/* Why Buy This Project */}
-      <Card style={styles.sectionCard}>
-        <Card.Content>
-          <Text variant="titleMedium" style={styles.sectionTitle}>Why Buy This Project</Text>
-          <Text>{property.whyBuy || "Information not available"}</Text>
-        </Card.Content>
-      </Card>
-
-      {/* Ratings & Reviews */}
-      <Card style={styles.sectionCard}>
-        <Card.Content>
-          <Text variant="titleMedium" style={styles.sectionTitle}>Ratings & Reviews</Text>
-          {property.reviews?.length > 0
-            ? property.reviews.map((rev, idx) => (
-                <View key={idx} style={{ marginBottom: 8 }}>
-                  <Text style={{ fontWeight: "bold" }}>{rev.user}</Text>
-                  <Text>⭐ {rev.rating}/5</Text>
-                  <Text>{rev.comment}</Text>
-                </View>
-              ))
-            : <Text>No reviews yet</Text>}
-        </Card.Content>
-      </Card>
-
-      {/* Compare Similar Projects */}
-      <Card style={styles.sectionCard}>
-        <Card.Content>
-          <Text variant="titleMedium" style={styles.sectionTitle}>Compare Similar Projects</Text>
-          {property.similarProjects?.length > 0
-            ? property.similarProjects.map((proj, idx) => (
-                <Text key={idx}>• {proj.title} - ₹{proj.price?.toLocaleString()}</Text>
-              ))
-            : <Text>No similar projects</Text>}
-        </Card.Content>
-      </Card>
-
-      {/* Nearby Places */}
-      <Card style={styles.sectionCard}>
-        <Card.Content>
-          <Text variant="titleMedium" style={styles.sectionTitle}>What's Nearby</Text>
-          <Text>{property.nearby?.join(", ") || "Not available"}</Text>
-        </Card.Content>
-      </Card>
-
-      Map
+      {/* Map */}
       {property.location?.latitude && property.location?.longitude && (
         <Card style={styles.sectionCard}>
           <Card.Content>
             <Text variant="titleMedium" style={styles.sectionTitle}>Location</Text>
             <MapView
-              style={{ width: "100%", height: 200, borderRadius: 10 }}
+              style={{ width: "100%", height: 200, borderRadius: 12 }}
               initialRegion={{
                 latitude: property.location.latitude,
                 longitude: property.location.longitude,
@@ -187,7 +148,7 @@ export default function PropertyDetailsScreen() {
         </Card>
       )}
 
-      {/* Contact / Back Buttons */}
+      {/* Buttons */}
       <View style={{ flexDirection: "row", justifyContent: "space-between", marginVertical: 20 }}>
         <Button
           mode="outlined"
@@ -214,12 +175,12 @@ export default function PropertyDetailsScreen() {
 const styles = StyleSheet.create({
   container: { padding: 10, backgroundColor: "#E0F2F1" },
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-  title: { fontWeight: "bold", marginTop: 10 },
-  price: { marginTop: 5, color: "#009688" },
-  subText: { marginTop: 4, color: "#555" },
-  description: { marginTop: 8, color: "#555" },
-  detail: { marginTop: 5 },
-  topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  sectionCard: { borderRadius: 10, marginBottom: 15, padding: 5 },
-  sectionTitle: { fontWeight: "bold", marginBottom: 5 },
+  title: { fontWeight: "bold", marginTop: 12, fontSize: 20 },
+  price: { marginTop: 6, color: "#009688", fontSize: 18 },
+  subText: { marginTop: 4, color: "#555", fontSize: 14 },
+  description: { marginTop: 8, color: "#555", fontSize: 14 },
+  detail: { marginTop: 5, fontSize: 13 },
+  topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 15 },
+  sectionCard: { borderRadius: 12, marginBottom: 15, padding: 8 },
+  sectionTitle: { fontWeight: "bold", marginBottom: 6, fontSize: 15 },
 });

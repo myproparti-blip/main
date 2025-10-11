@@ -23,12 +23,11 @@ export default function RootLayout() {
             <Stack.Screen name="login" />
             <Stack.Screen name="(drawer)" />
             <Stack.Screen name="services" />
-            <Stack.Screen name="explore" />
-            <Stack.Screen name="Explore" />
+            <Stack.Screen name="explore" /> 
             <Stack.Screen name="PropertyDetails" />
             <Stack.Screen name="profile" />
-            <Stack.Screen name="Delete Account" />
-            <Stack.Screen name="Post Property" />
+            <Stack.Screen name="DeleteAccount" />
+            <Stack.Screen name="PostProperty" />
             <Stack.Screen name="Logout" />
           </Stack>
           <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
