@@ -1,31 +1,135 @@
-import * as Linking from "expo-linking";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, View } from "react-native";
-import { Button, Card, Text, TextInput } from "react-native-paper";
-const UpiPaymentScreen = () => {
-  const [amount, setAmount] = useState("");
-  const [note, setNote] = useState("Property Booking");
+import { useState } from "react";
+import { ActivityIndicator, Alert, Button, Platform, StyleSheet, Text, View } from "react-native";
+import { WebView } from "react-native-webview";
+import { createUpiOrder, verifyUpiPayment } from "../services/payment.js";
+const Payment = ({ userId }) => {
   const [loading, setLoading] = useState(false);
-  const [paymentResult, setPaymentResult] = useState(null);
-  const UPI_ID = "7416698451@ptyes"; // your real UPI
-  const RECEIVER_NAME = "MyProparti Pvt Ltd";
-  // Listen for UPI callback response
-  useEffect(() => {
-    const subscription = Linking.addEventListener("url", handleUpiResponse);
-    return () => subscription.remove();
-  }, []);
-  const handleUpiResponse = (event) => {
-    const url = event.url;
-    if (url && url.includes("status=")) {
-      const status = new URLSearchParams(url.split("?")[1]).get("Status");
-      const txnId = new URLSearchParams(url.split("?")[1]).get("txnId");
-      const responseCode = new URLSearchParams(url.split("?")[1]).get("responseCode");
-      if (status?.toLowerCase() === "success") {
-        setPaymentResult({ success: true, txnId });
-        Alert.alert(":white_check_mark: Payment Successful", `Transaction ID: ${txnId}`);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [showWebView, setShowWebView] = useState(false);
+  const [checkoutHtml, setCheckoutHtml] = useState("");
+  // Generate clean Razorpay HTML without header and profile
+  const getRazorpayHtml = (order) => `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment</title>
+        <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+        <style>
+          .razorpay-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            z-index: 9999;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="razorpay-container">
+          <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
+            <div>Loading payment gateway...</div>
+          </div>
+        </div>
+        <script>
+          function initializeRazorpay() {
+            const options = {
+              key: "${order.key}",
+              amount: "${order.amount}",
+              currency: "INR",
+              description: "Payment for service",
+              order_id: "${order.orderId}",
+              theme: { color: "#F37254" },
+              handler: function(response) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  status: "success",
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature
+                }));
+              },
+              modal: {
+                ondismiss: function() {
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    status: "cancelled"
+                  }));
+                }
+              }
+            };
+            const rzp = new Razorpay(options);
+            // Remove Razorpay header events
+            rzp.on('ready', function(response) {
+              // Hide header elements if possible
+              setTimeout(() => {
+                const headerElements = document.querySelectorAll('.razorpay-header, .header, [class*="header"]');
+                headerElements.forEach(el => {
+                  if (el.innerHTML.includes('Back') || el.innerHTML.includes('Profile')) {
+                    el.style.display = 'none';
+                  }
+                });
+              }, 100);
+            });
+            rzp.open();
+            rzp.on('payment.failed', function(response) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                status: "failed",
+                error: response.error
+              }));
+            });
+          }
+          if (typeof Razorpay !== 'undefined') {
+            initializeRazorpay();
+          } else {
+            let checkCount = 0;
+            const checkRazorpay = setInterval(() => {
+              if (typeof Razorpay !== 'undefined') {
+                clearInterval(checkRazorpay);
+                initializeRazorpay();
+              }
+              checkCount++;
+              if (checkCount > 10) {
+                clearInterval(checkRazorpay);
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  status: "error",
+                  error: "Payment gateway failed to load"
+                }));
+              }
+            }, 500);
+          }
+        </script>
+      </body>
+    </html>
+  `;
+  const startPayment = async () => {
+    try {
+      setLoading(true);
+      const res = await createUpiOrder(500, userId);
+      if (!res.success) {
+        setLoading(false);
+        return Alert.alert("Error", res.message);
+      }
+      if (Platform.OS === "web") {
+        // Web implementation
+        setLoading(false);
+        if (typeof window.Razorpay === 'undefined') {
+          const script = document.createElement('script');
+          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+          script.onload = () => openRazorpayWeb(res);
+          script.onerror = () => {
+            Alert.alert("Error", "Failed to load payment gateway");
+          };
+          document.body.appendChild(script);
+        } else {
+          openRazorpayWeb(res);
+        }
       } else {
-        setPaymentResult({ success: false, responseCode });
-        Alert.alert(":x: Payment Failed", "Your payment could not be completed.");
+        // Mobile: Use WebView as full page
+        const htmlContent = getRazorpayHtml(res);
+        setCheckoutHtml(htmlContent);
+        setShowWebView(true);
+        setLoading(false);
       }
     }
   };
@@ -49,64 +153,96 @@ const UpiPaymentScreen = () => {
         params.tn
       )}&am=${params.am}&cu=${params.cu}&url=${params.url}`;
     try {
-      const supported = await Linking.canOpenURL(upiUrl);
-      if (supported) {
-        await Linking.openURL(upiUrl);
-      } else {
-        Alert.alert(
-          "No UPI App Found",
-          "Please install Google Pay, PhonePe, or Paytm."
-        );
+      const data = JSON.parse(event.nativeEvent.data);
+      switch (data.status) {
+        case "success":
+          setLoading(true);
+          const verifyRes = await verifyUpiPayment(
+            data.razorpay_order_id,
+            data.razorpay_payment_id,
+            data.razorpay_signature
+          );
+          setShowWebView(false);
+          setCheckoutHtml("");
+          if (verifyRes.success) {
+            setPaymentCompleted(true);
+            Alert.alert("Success", "Payment verified successfully!");
+          } else {
+            Alert.alert("Failed", "Payment verification failed!");
+          }
+          setLoading(false);
+          break;
+        case "cancelled":
+          setShowWebView(false);
+          setCheckoutHtml("");
+          Alert.alert("Cancelled", "Payment was cancelled");
+          break;
+        case "failed":
+          setShowWebView(false);
+          setCheckoutHtml("");
+          Alert.alert("Payment Failed", data.error?.description || "Payment failed");
+          break;
+        case "error":
+          setShowWebView(false);
+          setCheckoutHtml("");
+          Alert.alert("Error", data.error || "Payment gateway error");
+          break;
+        default:
+          setShowWebView(false);
+          setCheckoutHtml("");
+          break;
       }
-    } catch (error) {
-      console.error("Payment Error:", error);
-      Alert.alert("Error", "Something went wrong. Please try again.");
-    } finally {
+    } catch (err) {
+      console.log("WebView message error:", err);
+      setShowWebView(false);
+      setCheckoutHtml("");
       setLoading(false);
     }
   };
+  if (showWebView) {
+    return (
+      <View style={styles.fullScreenWebView}>
+        <WebView
+          originWhitelist={['*']}
+          source={{ html: checkoutHtml }}
+          style={styles.fullWebView}
+          onMessage={handleWebViewMessage}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+        />
+      </View>
+    );
+  }
   return (
-    <View style={{ flex: 1, justifyContent: "center", padding: 20, backgroundColor: "#fff" }}>
-      <Card style={{ padding: 20, borderRadius: 15, elevation: 3 }}>
-        <Text variant="headlineSmall" style={{ textAlign: "center", marginBottom: 15 }}>
-          :money_with_wings: UPI Payment
-        </Text>
-        <TextInput
-          label="Amount (₹)"
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="numeric"
-          mode="outlined"
-          style={{ marginBottom: 15 }}
-        />
-        <TextInput
-          label="Payment Note"
-          value={note}
-          onChangeText={setNote}
-          mode="outlined"
-          style={{ marginBottom: 20 }}
-        />
-        {loading ? (
-          <ActivityIndicator size="large" />
-        ) : (
-          <Button
-            mode="contained"
-            onPress={startPayment}
-            style={{ borderRadius: 8, padding: 5, backgroundColor: "#007BFF" }}
-          >
-            Pay Now
-          </Button>
-        )}
-        {paymentResult && (
-          <Text style={{ textAlign: "center", marginTop: 15, color: paymentResult.success ? "green" : "red" }}>
-            {paymentResult.success ? "Payment Success!" : "Payment Failed"}
-          </Text>
-        )}
-        <Text style={{ textAlign: "center", marginTop: 10, color: "gray" }}>
-          Powered by UPI – Secure Payment
-        </Text>
-      </Card>
+    <View style={styles.container}>
+      {loading && <ActivityIndicator size="large" color="#0000FF" />}
+      {!paymentCompleted && !loading && !showWebView && (
+        <Button title="Pay ₹500" onPress={startPayment} />
+      )}
+      {paymentCompleted && <Text style={styles.successText}>:white_check_mark: Payment Successful!</Text>}
     </View>
   );
 };
-export default UpiPaymentScreen;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20
+  },
+  fullScreenWebView: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  fullWebView: {
+    flex: 1,
+  },
+  successText: {
+    fontSize: 18,
+    color: "green",
+    marginTop: 20
+  },
+});
+export default Payment;
